@@ -33,7 +33,7 @@ LSP-julia provides additional commands which are available from the command pale
 | LSP-julia: Change Environment | `julia_activate_environment` | none | Choose the Julia project environment you are working in. Its packages are used by the language server to provide autocomplete suggestions. The server will take a while for indexing packages after running this command. |
 | LSP-julia: Select Code Block | `julia_select_code_block` | none | Select the function or code block at the current cursor position. For multiple active cursors, only the topmost cursor position is taken into account. |
 | LSP-julia: Run Code Block | `julia_run_code_block` | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> | Run the function or code block at the current cursor position in a Julia REPL. This command is only available if you have the [Terminus](https://packagecontrol.io/packages/Terminus) package installed. |
-| LSP-julia: Expand Inline Function | See [LSP-julia.sublime-commands](LSP-julia.sublime-commands) | !! Needs  a bugfix in LanguageServer.jl or a small adjustment in the LSP package to work. Might crash the server if not run with curser inside an inline function. !! |
+| LSP-julia: Expand Inline Function | See [LSP-julia.sublime-commands](LSP-julia.sublime-commands) | none | Replace an inline (assignment form) function with the traditional function declaration syntax. Might crash the server if not run with the curser located inside an inline function. |
 
 If you want to adjust or create additional key bindings for the commands, just copy the examples from the `.sublime-keymap` file for your OS into the corresponding file in your `Packages/User` folder.
 
