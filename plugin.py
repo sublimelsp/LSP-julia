@@ -193,9 +193,12 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         # ensure that Terminus output panel for Julia REPL is available
         if not self.view.window().find_output_panel("Julia REPL"):
             settings = sublime.load_settings(SETTINGS_FILE)
+            julia_executable = settings.get("julia_executable_path") or "julia"
+            # start in current project environment if available
+            cmd = [julia_executable, "--project"]
             self.view.window().run_command("terminus_open", {
-                "cmd": settings.get("julia_executable_path") or "julia",
-                "cwd": os.path.dirname(self.view.file_name()),
+                "cmd": cmd,
+                "cwd": "${file_path:${folder}}",
                 "panel_name": "Julia REPL",
                 "focus": False,
                 "tag": "lsp_julia_repl"
@@ -242,6 +245,7 @@ class JuliaOpenReplCommand(LspTextCommand):
             })
         else:
             self.view.window().focus_view(repl_view)
+
 
 class JuliaExecuteCommand(LspExecuteCommand):
     def is_enabled(self):
