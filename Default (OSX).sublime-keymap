@@ -1,8 +1,0 @@
-[
-    { "keys": ["alt+enter"], "command": "julia_run_code_block", "context":
-        [
-            { "key": "selector", "operand": "source.julia" },
-            { "key": "setting.lsp_active" }
-        ]
-    }
-]

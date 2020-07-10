@@ -36,7 +36,7 @@ LSP-julia provides additional commands which are available from the command pale
 | LSP-julia: Expand Inline Function | none | Replace an inline (assignment form) function with the traditional function declaration syntax. Might crash the server if not run with the curser located inside an inline function. |
 
 To add or adjust key bindings for the commands, edit the `.sublime-keymap` file for your OS in your `Packages/User` folder.
-For an example refer to the `.sublime-keymap` files in this repository, and for the command names see [LSP-julia.sublime-commands](LSP-julia.sublime-commands).
+For an example refer to the [Default.sublime-keymap](Default.sublime-keymap) file in this repository, and for the command names see [LSP-julia.sublime-commands](LSP-julia.sublime-commands).
 
 ## Miscellaneous
 
