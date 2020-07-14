@@ -8,7 +8,7 @@ from LSP.plugin.core.handlers import LanguageHandler
 from LSP.plugin.core.settings import read_client_config
 from LSP.plugin.core.protocol import Request, Notification, Point
 from LSP.plugin.core.registry import LspTextCommand, session_for_view
-from LSP.plugin.core.views import text_document_position_params, point_to_offset
+from LSP.plugin.core.views import text_document_position_params, versioned_text_document_identifier, point_to_offset
 from LSP.plugin.execute_command import LspExecuteCommand
 
 from .utils import load_settings
@@ -166,6 +166,7 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
     def run(self, edit):
         # send julia/getCurrentBlockRange request
         params = text_document_position_params(self.view, self.view.sel()[0].b)
+        params["version"] = versioned_text_document_identifier(self.view)["version"]
         client = self.client_with_capability(None)
         client.send_request(Request("julia/getCurrentBlockRange", params), self.handle_response)
 
@@ -209,6 +210,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
             })
         # send julia/getCurrentBlockRange request
         params = text_document_position_params(self.view, self.view.sel()[0].b)
+        params["version"] = versioned_text_document_identifier(self.view)["version"]
         client = self.client_with_capability(None)
         client.send_request(Request("julia/getCurrentBlockRange", params), self.handle_response)
 
