@@ -194,8 +194,6 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         return True
 
     def run(self, edit):
-        if not self.is_enabled():
-            return
         # ensure that Terminus output panel for Julia REPL is available
         if not self.view.window().find_output_panel("Julia REPL"):
             settings = sublime.load_settings(SETTINGS_FILE)
@@ -239,8 +237,6 @@ class JuliaOpenReplCommand(LspTextCommand):
         return True
 
     def run(self, edit):
-        if not self.is_enabled():
-            return
         repl_view = self.view.window().find_output_panel("Julia REPL")
         if repl_view:
             self.view.window().focus_view(repl_view)
