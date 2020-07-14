@@ -15,6 +15,7 @@ from .utils import load_settings
 
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
+JULIA_REPL_TAG = "lsp_julia_repl"
 
 
 def get_active_environment() -> tuple:
@@ -206,7 +207,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
                 "cwd": "${file_path:${folder}}",
                 "panel_name": "Julia REPL",
                 "focus": False,
-                "tag": "lsp_julia_repl"
+                "tag": JULIA_REPL_TAG
             })
         # send julia/getCurrentBlockRange request
         params = text_document_position_params(self.view, self.view.sel()[0].b)
@@ -226,7 +227,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         self.view.run_command("lsp_selection_add", {"regions": [(b, b)]})
         self.view.show_at_center(b)
         # send code block to Terminus Julia REPL
-        self.view.window().run_command("terminus_send_string", {"string": code_block, "tag": "lsp_julia_repl"})
+        self.view.window().run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
 
 
 class JuliaOpenReplCommand(LspTextCommand):
@@ -253,7 +254,7 @@ class JuliaOpenReplCommand(LspTextCommand):
                 "cwd": "${file_path:${folder}}",
                 "panel_name": "Julia REPL",
                 "focus": True,
-                "tag": "lsp_julia_repl"
+                "tag": JULIA_REPL_TAG
             })
 
 
