@@ -217,15 +217,14 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
     def handle_response(self, response):
         a = point_to_offset(Point.from_lsp(response[0]), self.view)
         b = point_to_offset(Point.from_lsp(response[1]), self.view)
+        c = point_to_offset(Point.from_lsp(response[2]), self.view)
         code_block = self.view.substr(sublime.Region(a, b))
         if not code_block.endswith("\n"):
             code_block += "\n"
         # move cursor to next code block
         self.view.sel().clear()
-        while self.view.substr(b) in {" ", "\t", "\n"} or self.view.match_selector(b, "comment"):
-            b += 1
-        self.view.run_command("lsp_selection_add", {"regions": [(b, b)]})
-        self.view.show_at_center(b)
+        self.view.run_command("lsp_selection_add", {"regions": [(c, c)]})
+        self.view.show_at_center(c)
         # send code block to Terminus Julia REPL
         self.view.window().run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
 
