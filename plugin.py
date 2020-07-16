@@ -18,30 +18,30 @@ SETTINGS_FILE = "LSP-julia.sublime-settings"
 JULIA_REPL_TAG = "lsp_julia_repl"
 
 
-def versioned_text_document_position_params(view, location):
+def versioned_text_document_position_params(view: sublime.View, location: int):
     params = text_document_position_params(view, location)
     params["version"] = versioned_text_document_identifier(view)["version"]
     return params
 
 
-def get_active_environment() -> tuple:
+def get_active_environment():
     settings = sublime.load_settings(SETTINGS_FILE)
     command = settings.get("command", [])
     command_str = command[-1]
     regex = re.compile("env_path=raw\".+\";")
     m = regex.findall(command_str)
     if len(m) != 1:
-        return ""
+        return None, None
     env_path = m[0][13:-2]
     env_name = os.path.basename(env_path)
     return env_name, env_path
 
 
-def is_project_folder(env_path: str) -> bool:
+def is_project_folder(env_path: str):
     return os.path.isfile(os.path.join(env_path, "Project.toml")) or os.path.isfile(os.path.join(env_path, "JuliaProject.toml"))
 
 
-def update_environment_settings(env_path: str) -> None:
+def update_environment_settings(env_path: str):
     settings = sublime.load_settings(SETTINGS_FILE)
     command = settings.get("command")
     if command:
@@ -50,7 +50,7 @@ def update_environment_settings(env_path: str) -> None:
         sublime.save_settings(SETTINGS_FILE)
 
 
-def update_environment_status(window: sublime.Window, env_name: str) -> None:
+def update_environment_status(window: sublime.Window, env_name: str):
     for view in window.views():
         if view.match_selector(0, "source.julia"):
             view.set_status("lsp_clients_julia", env_name)
@@ -75,11 +75,11 @@ class JuliaFileListener(sublime_plugin.EventListener):
 class LspJuliaPlugin(LanguageHandler):
     _window = None
 
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
 
     @property
-    def name(self) -> str:
+    def name(self):
         return "julia"
 
     @property
@@ -93,11 +93,11 @@ class LspJuliaPlugin(LanguageHandler):
         settings = load_settings(SETTINGS_FILE)
         return read_client_config(self.name, settings)
 
-    def on_start(self, window) -> bool:
+    def on_start(self, window):
         self._window = window
         return True
 
-    def on_initialized(self, client) -> None:
+    def on_initialized(self, client):
         settings = sublime.load_settings(SETTINGS_FILE)
         # TODO: is it possible to do this logic even before the language server starts,
         #       so that it will use the correct env_path right from the beginning?
