@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/github/license/jwortmann/LSP-julia)](https://github.com/jwortmann/LSP-julia/blob/master/LICENSE)
 
-A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime Text with support for the [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl) Julia language server.
+A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime Text 3 with support for the [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl) Julia language server.
 
 IMPORTANT: This plugin is in an early stage and under development, so it might not work flawlessly yet and there could be some breaking changes in the future.
 
@@ -44,9 +44,10 @@ The startup time for the Julia language server can be noticeably reduced by prec
 julia> using PackageCompiler
 pkg> activate .
 pkg> add LanguageServer
-julia> create_sysimage(:LanguageServer; sysimage_path="LanguageServer.so")
+pkg> add SymbolServer
+julia> create_sysimage([:LanguageServer, :SymbolServer]; sysimage_path="LanguageServer.so")
 ```
-Then add the starting option `"--sysimage", "path/to/LanguageServer.so"` into `"command"` in your user settings file.
+Then set `"sysimage_path"` in your LSP-julia user settings to the full path of the created sysimage file.
 
 ## Known issues and workarounds
 

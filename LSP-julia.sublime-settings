@@ -3,6 +3,15 @@
     // itself) or leave empty if Julia is in your PATH.
     "julia_executable_path": "",
 
+    // You can use a custom sysimage for the language server to reduce startup
+    // time. A sysimage with precompiled language server can be created via the
+    // command "LSP-julia: Precompile Language Server" from the command palette. (command not implemented yet)
+    // The full path to the sysimage file will automatically be added to your
+    // User settings after running the command. It should not be edited manually,
+    // unless you want to use your own sysimage file. Leave empty if you don't
+    // want to use a custom sysimage.
+    "sysimage_path": "",
+
     // Show name of the active environment in the status bar.
     "show_environment_status": true,
 

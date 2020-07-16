@@ -15,6 +15,7 @@ from .utils import load_settings
 
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
+STATUS_BAR_KEY = "lsp_clients_julia"
 JULIA_REPL_TAG = "julia_repl"
 
 
@@ -41,19 +42,31 @@ def is_project_folder(env_path: str):
     return os.path.isfile(os.path.join(env_path, "Project.toml")) or os.path.isfile(os.path.join(env_path, "JuliaProject.toml"))
 
 
-def update_environment_settings(env_path: str):
+def update_starting_command(env_path=None):
     settings = sublime.load_settings(SETTINGS_FILE)
-    command = settings.get("command")
-    if command:
-        command[-1] = "using LanguageServer, LanguageServer.SymbolServer; env_path=raw\"{}\"; depot_path=first(Base.DEPOT_PATH); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)".format(env_path)
-        settings.set("command", command)
-        sublime.save_settings(SETTINGS_FILE)
+    command = [
+        settings.get("julia_executable_path") or "julia",
+        "--startup-file=no",
+        "--history-file=no"
+    ]
+    env_path_str = "raw\"{}\"".format(env_path) if env_path else "Base.load_path_expand(LOAD_PATH[2])"
+    sysimage_path = settings.get("sysimage_path")
+    if sysimage_path:
+        command.append("--sysimage")
+        command.append(sysimage_path)
+        command.append("-e")
+        command.append("env_path={}; depot_path=first(Base.DEPOT_PATH); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)".format(env_path_str))
+    else:
+        command.append("-e")
+        command.append("using LanguageServer, LanguageServer.SymbolServer; env_path={}; depot_path=first(Base.DEPOT_PATH); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)".format(env_path_str))
+    settings.set("command", command)
+    sublime.save_settings(SETTINGS_FILE)
 
 
 def update_environment_status(window: sublime.Window, env_name: str):
     for view in window.views():
         if view.match_selector(0, "source.julia"):
-            view.set_status("lsp_clients_julia", env_name)
+            view.set_status(STATUS_BAR_KEY, env_name)
 
 
 class JuliaFileListener(sublime_plugin.EventListener):
@@ -69,7 +82,7 @@ class JuliaFileListener(sublime_plugin.EventListener):
             return
         env_name = get_active_environment()[0]
         if env_name:
-            view.set_status("lsp_clients_julia", env_name)
+            view.set_status(STATUS_BAR_KEY, env_name)
 
 
 class LspJuliaPlugin(LanguageHandler):
@@ -84,12 +97,8 @@ class LspJuliaPlugin(LanguageHandler):
 
     @property
     def config(self):
-        settings = sublime.load_settings(SETTINGS_FILE)
-        julia_executable_path = settings.get("julia_executable_path")
-        command = settings.get("command")
-        command[0] = julia_executable_path or "julia"
-        settings.set("command", command)
-        sublime.save_settings(SETTINGS_FILE)
+        env_path = get_active_environment()[1]
+        update_starting_command(env_path)
         settings = load_settings(SETTINGS_FILE)
         return read_client_config(self.name, settings)
 
@@ -107,12 +116,19 @@ class LspJuliaPlugin(LanguageHandler):
                 if is_project_folder(folder):
                     if folder != current_env_path:
                         client.send_notification(Notification("julia/activateenvironment", folder))
-                        update_environment_settings(folder)
+                        update_starting_command(folder)
                     break
         if settings.get("show_environment_status"):
             env_name = get_active_environment()[0]
             if env_name:
                 update_environment_status(self._window, env_name)
+
+
+class PrecompileJuliaLanguageServerCommand(sublime_plugin.ApplicationCommand):
+    def run(self):
+        # self.active_window().status_message("Precompiling Julia Language Server...")
+        # settings = sublime.load_settings(SETTINGS_FILE)
+        self.active_window().status_message("Not implemented yet")
 
 
 class JuliaActivateEnvironmentCommand(LspTextCommand):
@@ -128,7 +144,7 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
         client.send_notification(Notification("julia/activateenvironment", env_path))
 
         # update settings
-        update_environment_settings(env_path)
+        update_starting_command(env_path)
 
         # update status bar
         settings = load_settings(SETTINGS_FILE)
