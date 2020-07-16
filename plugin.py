@@ -15,7 +15,7 @@ from .utils import load_settings
 
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
-JULIA_REPL_TAG = "lsp_julia_repl"
+JULIA_REPL_TAG = "julia_repl"
 
 
 def versioned_text_document_position_params(view: sublime.View, location: int):
@@ -80,7 +80,7 @@ class LspJuliaPlugin(LanguageHandler):
 
     @property
     def name(self):
-        return "julia"
+        return "lsp-julia"
 
     @property
     def config(self):
