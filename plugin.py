@@ -1,6 +1,9 @@
 import os
 import re
 import importlib
+import subprocess
+import threading
+
 import sublime
 import sublime_plugin
 
@@ -28,9 +31,8 @@ def versioned_text_document_position_params(view: sublime.View, location: int):
 def get_active_environment():
     settings = sublime.load_settings(SETTINGS_FILE)
     command = settings.get("command", [])
-    command_str = command[-1]
     regex = re.compile("env_path=raw\".+\";")
-    m = regex.findall(command_str)
+    m = regex.findall(command[-1])
     if len(m) != 1:
         return None, None
     env_path = m[0][13:-2]
@@ -124,11 +126,42 @@ class LspJuliaPlugin(LanguageHandler):
                 update_environment_status(self._window, env_name)
 
 
-class PrecompileJuliaLanguageServerCommand(sublime_plugin.ApplicationCommand):
-    def run(self):
-        # self.active_window().status_message("Precompiling Julia Language Server...")
-        # settings = sublime.load_settings(SETTINGS_FILE)
-        self.active_window().status_message("Not implemented yet")
+class JuliaPrecompileLanguageServerCommand(sublime_plugin.WindowCommand):
+    def run(self, sysimage_path):
+        self.window.status_message("Precompiling Julia Language Server...")
+        thread = threading.Thread(target=self.precompile, args=[sysimage_path])
+        thread.start()
+
+    def input(self, args):
+        return SysimagePathInputHandler()
+
+    def input_description(self):
+        return "Sysimage path"
+
+    def precompile(self, sysimage_path):
+        settings = sublime.load_settings(SETTINGS_FILE)
+        julia_bin = settings.get("julia_executable_path") or "julia"
+        cache_path = os.path.join(sublime.cache_path(), "JuliaLanguageServer")
+        if not os.path.exists(cache_path):
+            os.mkdir(cache_path)
+        precompile_script = sublime.load_resource("Packages/LSP-julia/precompile.jl").replace("\n", ";")
+        returncode = subprocess.call([julia_bin, "-e", precompile_script, cache_path, sysimage_path])
+        if returncode == 0:
+            settings.set("sysimage_path", sysimage_path)
+            sublime.save_settings(SETTINGS_FILE)
+            env_path = get_active_environment()[1]
+            update_starting_command(env_path)
+            sublime.message_dialog("The language server has successfully been precompiled into a custom sysimage, which will be used as soon as Sublime Text is restarted.")
+        else:
+            sublime.error_message("An error occured while precompiling the language server. Ensure to have PackageCompiler.jl installed in your default Julia environment!")
+
+
+class SysimagePathInputHandler(sublime_plugin.TextInputHandler):
+    def initial_text(self):
+        return os.path.expanduser(os.path.join("~", ".julia", "LanguageServer.so"))
+
+    def validate(self, text):
+        return os.path.exists(os.path.dirname(text))
 
 
 class JuliaActivateEnvironmentCommand(LspTextCommand):
