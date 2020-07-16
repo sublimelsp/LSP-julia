@@ -18,6 +18,12 @@ SETTINGS_FILE = "LSP-julia.sublime-settings"
 JULIA_REPL_TAG = "lsp_julia_repl"
 
 
+def versioned_text_document_position_params(view, location):
+    params = text_document_position_params(view, location)
+    params["version"] = versioned_text_document_identifier(view)["version"]
+    return params
+
+
 def get_active_environment() -> tuple:
     settings = sublime.load_settings(SETTINGS_FILE)
     command = settings.get("command", [])
@@ -93,6 +99,8 @@ class LspJuliaPlugin(LanguageHandler):
 
     def on_initialized(self, client) -> None:
         settings = sublime.load_settings(SETTINGS_FILE)
+        # TODO: is it possible to do this logic even before the language server starts,
+        #       so that it will use the correct env_path right from the beginning?
         if settings.get("auto_change_environment"):
             current_env_path = get_active_environment()[1]
             for folder in self._window.folders():
@@ -209,8 +217,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
                 "tag": JULIA_REPL_TAG
             })
         # send julia/getCurrentBlockRange request
-        params = text_document_position_params(self.view, self.view.sel()[0].b)
-        params["version"] = versioned_text_document_identifier(self.view)["version"]
+        params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
         client = self.client_with_capability(None)
         client.send_request(Request("julia/getCurrentBlockRange", params), self.handle_response)
 
@@ -227,6 +234,41 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         self.view.show_at_center(c)
         # send code block to Terminus Julia REPL
         self.view.window().run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
+
+
+# class JuliaGetDocumentation(LspTextCommand):
+#     def is_enabled(self):
+#         if not self.view.match_selector(0, "source.julia"):
+#             return False
+#         if not self.client_with_capability(None):
+#             return False
+#         return True
+
+#     def run(self, edit):
+#         params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
+#         client = self.client_with_capability(None)
+#         client.send_request(Request("julia/getDocAt", params), self.handle_response)
+
+#     def handle_response(self, response):
+#         if not response:
+#             self.view.window().status_message("No documentation available at cursor position")
+
+
+# class JuliaGetModule(LspTextCommand):
+#     def is_enabled(self):
+#         if not self.view.match_selector(0, "source.julia"):
+#             return False
+#         if not self.client_with_capability(None):
+#             return False
+#         return True
+
+#     def run(self, edit):
+#         params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
+#         client = self.client_with_capability(None)
+#         client.send_request(Request("julia/getModuleAt", params), self.handle_response)
+
+#     def handle_response(self, response):
+#         self.view.window().status_message(response)
 
 
 class JuliaOpenReplCommand(LspTextCommand):
