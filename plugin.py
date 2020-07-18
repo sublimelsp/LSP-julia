@@ -82,7 +82,8 @@ def start_terminus_repl(window: sublime.Window, focus: bool):
         "cwd": "${file_path:${folder}}",
         "panel_name": JULIA_REPL_NAME,
         "focus": focus,
-        "tag": JULIA_REPL_TAG
+        "tag": JULIA_REPL_TAG,
+        "env": {"JULIA_NUM_THREADS": "4"}
     })
 
 
@@ -340,21 +341,17 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
 #         self.view.window().status_message(response)
 
 
-class JuliaOpenReplCommand(LspTextCommand):
+class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
     def is_enabled(self):
-        if not self.view.match_selector(0, "source.julia"):
-            return False
-        if not importlib.find_loader("Terminus"):
-            return False
-        return True
+        return importlib.find_loader("Terminus") is not None
 
-    def run(self, edit):
-        window = self.view.window()
-        repl_view = window.find_output_panel(JULIA_REPL_NAME)
+    def run(self):
+        repl_view = self.window.find_output_panel(JULIA_REPL_NAME)
         if repl_view:
-            window.focus_view(repl_view)
+            self.window.run_command("show_panel", {"panel": "output.{}".format(JULIA_REPL_NAME)})
+            self.window.focus_view(repl_view)
         else:
-            start_terminus_repl(window, True)
+            start_terminus_repl(self.window, True)
 
 
 class JuliaExecuteCommand(LspExecuteCommand):
