@@ -174,7 +174,8 @@ class JuliaPrecompileLanguageServerCommand(sublime_plugin.WindowCommand):
 
 class SysimagePathInputHandler(sublime_plugin.TextInputHandler):
     def initial_text(self):
-        return os.path.expanduser(os.path.join("~", ".julia", "LanguageServer.so"))
+        extension = "dll" if sublime.platform() == "windows" else "so"
+        return os.path.expanduser(os.path.join("~", ".julia", "LanguageServer.{}".format(extension)))
 
     def validate(self, text):
         return os.path.exists(os.path.dirname(text))
