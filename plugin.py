@@ -83,7 +83,7 @@ def start_terminus_repl(window: sublime.Window, focus: bool):
         "panel_name": JULIA_REPL_NAME,
         "focus": focus,
         "tag": JULIA_REPL_TAG,
-        "env": {"JULIA_NUM_THREADS": "4"}
+        "env": settings.get("repl_env_variables")
     })
 
 
@@ -174,8 +174,8 @@ class JuliaPrecompileLanguageServerCommand(sublime_plugin.WindowCommand):
 
 class SysimagePathInputHandler(sublime_plugin.TextInputHandler):
     def initial_text(self):
-        extension = "dll" if sublime.platform() == "windows" else "so"
-        return os.path.expanduser(os.path.join("~", ".julia", "LanguageServer.{}".format(extension)))
+        file_extension = "dll" if sublime.platform() == "windows" else "so"
+        return os.path.expanduser(os.path.join("~", ".julia", "LanguageServer.{}".format(file_extension)))
 
     def validate(self, text):
         return os.path.exists(os.path.dirname(text))

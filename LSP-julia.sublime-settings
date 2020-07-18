@@ -12,7 +12,12 @@
     // want to use a custom sysimage.
     "sysimage_path": "",
 
-    // Show name of the active environment in the status bar.
+    // Additional environmental variables for the Julia REPL.
+    "repl_env_variables": {
+        "JULIA_NUM_THREADS": "4"
+    },
+
+    // Show name of the active Julia environment in the status bar.
     "show_environment_status": true,
 
     // If a Julia project folder is open in Sublime Text (i.e. it contains a
