@@ -19,6 +19,7 @@ from .utils import load_settings
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
 STATUS_BAR_KEY = "lsp_clients_julia"
+JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 
 
@@ -69,6 +70,20 @@ def update_environment_status(window: sublime.Window, env_name: str):
     for view in window.views():
         if view.match_selector(0, "source.julia"):
             view.set_status(STATUS_BAR_KEY, env_name)
+
+
+def start_terminus_repl(window: sublime.Window, focus: bool):
+    settings = sublime.load_settings(SETTINGS_FILE)
+    julia_executable = settings.get("julia_executable_path") or "julia"
+    # start in current project environment if available
+    cmd = [julia_executable, "--project"]
+    window.run_command("terminus_open", {
+        "cmd": cmd,
+        "cwd": "${file_path:${folder}}",
+        "panel_name": JULIA_REPL_NAME,
+        "focus": focus,
+        "tag": JULIA_REPL_TAG
+    })
 
 
 class JuliaFileListener(sublime_plugin.EventListener):
@@ -252,35 +267,40 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         return True
 
     def run(self, edit):
+        window = self.view.window()
+        sel = self.view.sel()[0]
         # ensure that Terminus output panel for Julia REPL is available
-        if not self.view.window().find_output_panel("Julia REPL"):
-            settings = sublime.load_settings(SETTINGS_FILE)
-            julia_executable = settings.get("julia_executable_path") or "julia"
-            # start in current project environment if available
-            cmd = [julia_executable, "--project"]
-            self.view.window().run_command("terminus_open", {
-                "cmd": cmd,
-                "cwd": "${file_path:${folder}}",
-                "panel_name": "Julia REPL",
-                "focus": False,
-                "tag": JULIA_REPL_TAG
-            })
-        # send julia/getCurrentBlockRange request
-        params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
-        client = self.client_with_capability(None)
-        client.send_request(Request("julia/getCurrentBlockRange", params), self.handle_response)
+        if not window.find_output_panel("Julia REPL"):
+            start_terminus_repl(window, False)
+            # if no language server request necessary, wait a bit (5 ms) for Terminus to initialize
+            if not sel.empty():
+                code_block = self.view.substr(sel)
+                sublime.set_timeout(lambda: self.send_julia_repl(code_block), 5)
+                return
+        if sel.empty():
+            # send julia/getCurrentBlockRange request
+            params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
+            client = self.client_with_capability(None)
+            client.send_request(Request("julia/getCurrentBlockRange", params), self.handle_response)
+        else:
+            code_block = self.view.substr(sel)
+            self.send_julia_repl(code_block)
 
     def handle_response(self, response):
         a = point_to_offset(Point.from_lsp(response[0]), self.view)
         b = point_to_offset(Point.from_lsp(response[1]), self.view)
         c = point_to_offset(Point.from_lsp(response[2]), self.view)
         code_block = self.view.substr(sublime.Region(a, b))
-        if not code_block.endswith("\n"):
-            code_block += "\n"
         # move cursor to next code block
         self.view.sel().clear()
         self.view.run_command("lsp_selection_add", {"regions": [(c, c)]})
         self.view.show_at_center(c)
+        self.send_julia_repl(code_block)
+
+    def send_julia_repl(self, code_block):
+        # ensure code block ends with newline
+        if not code_block.endswith("\n"):
+            code_block += "\n"
         # send code block to Terminus Julia REPL
         self.view.window().run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
 
@@ -329,21 +349,12 @@ class JuliaOpenReplCommand(LspTextCommand):
         return True
 
     def run(self, edit):
-        repl_view = self.view.window().find_output_panel("Julia REPL")
+        window = self.view.window()
+        repl_view = window.find_output_panel(JULIA_REPL_NAME)
         if repl_view:
-            self.view.window().focus_view(repl_view)
+            window.focus_view(repl_view)
         else:
-            settings = sublime.load_settings(SETTINGS_FILE)
-            julia_executable = settings.get("julia_executable_path") or "julia"
-            # start in current project environment if available
-            cmd = [julia_executable, "--project"]
-            self.view.window().run_command("terminus_open", {
-                "cmd": cmd,
-                "cwd": "${file_path:${folder}}",
-                "panel_name": "Julia REPL",
-                "focus": True,
-                "tag": JULIA_REPL_TAG
-            })
+            start_terminus_repl(window, True)
 
 
 class JuliaExecuteCommand(LspExecuteCommand):
