@@ -10,7 +10,7 @@ import sublime_plugin
 from LSP.plugin.core.handlers import LanguageHandler
 from LSP.plugin.core.settings import read_client_config
 from LSP.plugin.core.protocol import Request, Notification, Point
-from LSP.plugin.core.registry import LspTextCommand, session_for_view
+from LSP.plugin.core.registry import LspTextCommand
 from LSP.plugin.core.views import text_document_position_params, versioned_text_document_identifier, point_to_offset
 from LSP.plugin.execute_command import LspExecuteCommand
 
@@ -95,8 +95,6 @@ class JuliaFileListener(sublime_plugin.EventListener):
         if not settings.get("enabled", True):
             return
         if not settings.get("show_environment_status"):
-            return
-        if not session_for_view(view, None):
             return
         env_name = get_active_environment()[0]
         if env_name:
