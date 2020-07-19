@@ -4,7 +4,7 @@
 
 A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime Text 3 with support for the [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl) Julia language server.
 
-IMPORTANT: This plugin is in an early stage and under development, so it might not work flawlessly yet and there could be some breaking changes in the future.
+IMPORTANT: This plugin is still under development, so it might not work flawlessly yet and there could be some breaking changes in the future.
 
 ## Installation
 
@@ -43,5 +43,5 @@ For an example refer to the [Default.sublime-keymap](Default.sublime-keymap) fil
 
 ## Known issues and workarounds
 
-* LSP leaves orphaned Julia processes for the language server, see [LSP#410](https://github.com/sublimelsp/LSP/issues/410) and [LSP#869](https://github.com/sublimelsp/LSP/issues/869).
+* LSP leaves orphaned Julia processes for the language server on Sublime Text 3, see [LSP#410](https://github.com/sublimelsp/LSP/issues/410) and [LSP#869](https://github.com/sublimelsp/LSP/issues/869).
   There is a workaround for Linux/macOS to start the server via a [Bash script](https://github.com/julia-vscode/LanguageServer.jl/blob/master/contrib/languageserver.sh) which periodically checks for and kills orphaned language server processes, but that doesn't allow to specify a path to the active Julia environment in its starting arguments.

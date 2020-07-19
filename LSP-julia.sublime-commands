@@ -28,14 +28,6 @@
         "command": "julia_open_repl"
     },
     {
-        "caption": "LSP-julia: Add Import Statement for Package Variable",
-        "command": "julia_execute",
-        "args": {
-            "command_name": "ExplicitPackageVarImport",
-            "command_args": ["$file_uri", "$offset"]
-        }
-    },
-    {
         "caption": "LSP-julia: Expand Inline Function",
         "command": "julia_execute",
         "args": {
@@ -43,36 +35,44 @@
             "command_args": ["$file_uri", "$offset"]
         }
     },
-    {
-        "caption": "LSP-julia: Add Default Constructor",
-        "command": "julia_execute",
-        "args": {
-            "command_name": "AddDefaultConstructor",
-            "command_args": ["$file_uri", "$offset"]
-        }
-    },
-    {
-        "caption": "LSP-julia: Reexport Module",
-        "command": "julia_execute",
-        "args": {
-            "command_name": "ReexportModule",
-            "command_args": ["$file_uri", "$offset"]
-        }
-    },
-    {
-        "caption": "LSP-julia: Wrap in If-Block",
-        "command": "julia_execute",
-        "args": {
-            "command_name": "WrapIfBlock",
-            "command_args": ["$file_uri", "$selection_begin", "$selection_end"]
-        }
-    },
-    {
-        "caption": "LSP-julia: Fix Missing Reference",
-        "command": "julia_execute",
-        "args": {
-            "command_name": "FixMissingRef",
-            "command_args": ["$file_uri", "$offset"]
-        }
-    }
+    // {
+    //     "caption": "LSP-julia: Add Import Statement for Package Variable",
+    //     "command": "julia_execute",
+    //     "args": {
+    //         "command_name": "ExplicitPackageVarImport",
+    //         "command_args": ["$file_uri", "$offset"]
+    //     }
+    // },
+    // {
+    //     "caption": "LSP-julia: Add Default Constructor",
+    //     "command": "julia_execute",
+    //     "args": {
+    //         "command_name": "AddDefaultConstructor",
+    //         "command_args": ["$file_uri", "$offset"]
+    //     }
+    // },
+    // {
+    //     "caption": "LSP-julia: Reexport Module",
+    //     "command": "julia_execute",
+    //     "args": {
+    //         "command_name": "ReexportModule",
+    //         "command_args": ["$file_uri", "$offset"]
+    //     }
+    // },
+    // {
+    //     "caption": "LSP-julia: Wrap in If-Block",
+    //     "command": "julia_execute",
+    //     "args": {
+    //         "command_name": "WrapIfBlock",
+    //         "command_args": ["$file_uri", "$selection_begin", "$selection_end"]
+    //     }
+    // },
+    // {
+    //     "caption": "LSP-julia: Fix Missing Reference",
+    //     "command": "julia_execute",
+    //     "args": {
+    //         "command_name": "FixMissingRef",
+    //         "command_args": ["$file_uri", "$offset"]
+    //     }
+    // }
 ]
