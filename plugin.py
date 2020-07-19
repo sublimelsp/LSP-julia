@@ -14,13 +14,29 @@ from LSP.plugin.core.registry import LspTextCommand, session_for_view
 from LSP.plugin.core.views import text_document_position_params, versioned_text_document_identifier, point_to_offset
 from LSP.plugin.execute_command import LspExecuteCommand
 
-from .utils import load_settings
-
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
 STATUS_BAR_KEY = "lsp_clients_julia"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
+
+
+def merge_dicts(default: dict, user: dict):
+    """ Recursively merges user into default """
+    for key, value in default.items():
+        if key in user:
+            new_value = user[key]
+            if isinstance(value, dict) and isinstance(new_value, dict):
+                yield key, dict(merge_dicts(value, new_value))
+            else:
+                # overwrite default value with user value
+                yield key, new_value
+        else:
+            yield key, value
+    # add all additional items from user
+    for key, value in user.items():
+        if key not in default:
+            yield key, value
 
 
 def versioned_text_document_position_params(view: sublime.View, location: int):
@@ -64,6 +80,7 @@ def update_starting_command(env_path=None):
         command.append("using LanguageServer, LanguageServer.SymbolServer; env_path={}; depot_path=first(Base.DEPOT_PATH); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)".format(env_path_str))
     settings.set("command", command)
     sublime.save_settings(SETTINGS_FILE)
+    return command
 
 
 def update_environment_status(window: sublime.Window, env_name: str):
@@ -115,10 +132,28 @@ class LspJuliaPlugin(LanguageHandler):
 
     @property
     def config(self):
-        env_path = get_active_environment()[1]
-        update_starting_command(env_path)
-        settings = load_settings(SETTINGS_FILE)
-        return read_client_config(self.name, settings)
+        # load default and user configuration separately to allow merging of settings dicts
+        client_config_json = sublime.load_resource("Packages/{}/{}".format(__package__, SETTINGS_FILE))
+        client_config = sublime.decode_value(client_config_json)
+        client_config["enabled"] = True
+        if os.path.exists(os.path.join(sublime.packages_path(), "User", SETTINGS_FILE)):
+            user_config_json = sublime.load_resource("Packages/User/{}".format(SETTINGS_FILE))
+            user_config = sublime.decode_value(user_config_json)
+            default_settings = client_config.get("settings", {})
+            user_settings = user_config.get("settings", {})
+            client_config.update(user_config)
+            # merge only settings dicts
+            settings = dict()
+            for key, value in merge_dicts(default_settings, user_settings):
+                settings[key] = value
+            client_config["settings"] = settings
+            # update starting command if server should be started with sysimage,
+            # because sysimage_path in user settings might have been changed manually
+            if user_config.get("sysimage_path"):
+                env_path = get_active_environment()[1]
+                command = update_starting_command(env_path)
+                client_config["command"] = command
+        return read_client_config(self.name, client_config)
 
     def on_start(self, window):
         self._window = window
@@ -239,8 +274,7 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
 
     def run(self, edit):
         # send julia/getCurrentBlockRange request
-        params = text_document_position_params(self.view, self.view.sel()[0].b)
-        params["version"] = versioned_text_document_identifier(self.view)["version"]
+        params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
         client = self.client_with_capability(None)
         client.send_request(Request("julia/getCurrentBlockRange", params), self.handle_response)
 
