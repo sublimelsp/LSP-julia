@@ -1,6 +1,6 @@
 # LSP-julia
 
-[![License](https://img.shields.io/github/license/jwortmann/LSP-julia)](https://github.com/jwortmann/LSP-julia/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/sublimelsp/LSP-julia)](https://github.com/sublimelsp/LSP-julia/blob/master/LICENSE)
 
 A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime Text 3 with support for the [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl) Julia language server.
 
