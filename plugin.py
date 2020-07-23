@@ -230,7 +230,7 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
         update_starting_command(env_path)
 
         # update status bar
-        settings = load_settings(SETTINGS_FILE)
+        settings = sublime.load_settings(SETTINGS_FILE)
         if settings.get("show_environment_status"):
             env_name = os.path.basename(env_path)
             update_environment_status(self.view.window(), env_name)
@@ -297,7 +297,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
             return False
         # cursor must not be at end of file
         if self.view.sel()[0].b == self.view.size():
-            return
+            return False
         return True
 
     def run(self, edit):
