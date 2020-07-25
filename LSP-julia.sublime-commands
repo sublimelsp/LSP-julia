@@ -24,6 +24,10 @@
         "command": "julia_run_code_block"
     },
     {
+        "caption": "LSP-julia: Run Code Cell",
+        "command": "julia_run_code_cell"
+    },
+    {
         "caption": "LSP-julia: Open REPL",
         "command": "julia_open_repl"
     },

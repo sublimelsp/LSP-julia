@@ -1,8 +1,4 @@
 [
-    { "keys": ["alt+enter"], "command": "julia_run_code_block", "context":
-        [
-            { "key": "selector", "operand": "source.julia" },
-            { "key": "setting.lsp_active" }
-        ]
-    }
+    { "keys": ["alt+enter"], "command": "julia_run_code_block", "context": [{"key": "selector", "operand": "source.julia"}, {"key": "setting.lsp_active"}] },
+    { "keys": ["alt+shift+enter"], "command": "julia_run_code_cell", "context": [{"key": "selector", "operand": "source.julia"}, {"key": "setting.lsp_active"}] }
 ]

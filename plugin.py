@@ -19,6 +19,7 @@ SETTINGS_FILE = "LSP-julia.sublime-settings"
 STATUS_BAR_KEY = "lsp_clients_julia"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
+CELL_DELIMITER = "##"
 
 
 def merge_dicts(default: dict, user: dict):
@@ -104,8 +105,23 @@ def start_terminus_repl(window: sublime.Window, focus: bool):
     })
 
 
+def ensure_terminus_repl(window: sublime.Window):
+    if not window.find_output_panel(JULIA_REPL_NAME):
+        start_terminus_repl(window, False)
+        return False
+    return True
+
+
+def send_terminus_repl(window: sublime.Window, code_block: str):
+    # ensure code block ends with newline
+    if not code_block.endswith("\n"):
+        code_block += "\n"
+    # send code block to Terminus Julia REPL
+    window.run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
+
+
 class JuliaFileListener(sublime_plugin.EventListener):
-    def on_load(self, view: sublime.View) -> None:
+    def on_load(self, view: sublime.View):
         if not view.match_selector(0, "source.julia"):
             return
         settings = sublime.load_settings(SETTINGS_FILE)
@@ -304,13 +320,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         window = self.view.window()
         sel = self.view.sel()[0]
         # ensure that Terminus output panel for Julia REPL is available
-        if not window.find_output_panel("Julia REPL"):
-            start_terminus_repl(window, False)
-            # if no language server request necessary, wait a bit (5 ms) for Terminus to initialize
-            if not sel.empty():
-                code_block = self.view.substr(sel)
-                sublime.set_timeout(lambda: self.send_julia_repl(code_block), 5)
-                return
+        repl_ready = ensure_terminus_repl(window)
         if sel.empty():
             # send julia/getCurrentBlockRange request
             params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
@@ -318,7 +328,10 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
             client.send_request(Request("julia/getCurrentBlockRange", params), self.handle_response)
         else:
             code_block = self.view.substr(sel)
-            self.send_julia_repl(code_block)
+            if repl_ready:
+                send_terminus_repl(self.view.window(), code_block)
+            else:
+                sublime.set_timeout(lambda: send_terminus_repl(self.view.window(), code_block), 5)
 
     def handle_response(self, response):
         a = point_to_offset(Point.from_lsp(response[0]), self.view)
@@ -329,14 +342,68 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         self.view.sel().clear()
         self.view.run_command("lsp_selection_add", {"regions": [(c, c)]})
         self.view.show_at_center(c)
-        self.send_julia_repl(code_block)
+        send_terminus_repl(self.view.window(), code_block)
 
-    def send_julia_repl(self, code_block):
-        # ensure code block ends with newline
-        if not code_block.endswith("\n"):
-            code_block += "\n"
-        # send code block to Terminus Julia REPL
-        self.view.window().run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
+
+class JuliaRunCodeCellCommand(LspTextCommand):
+    def is_enabled(self):
+        # must be Julia file
+        if not self.view.match_selector(0, "source.julia"):
+            return False
+        # Terminus package must be installed
+        if not importlib.find_loader("Terminus"):
+            return False
+        # Language Server must be ready
+        if not self.client_with_capability(None):
+            return False
+        # cursor must not be at end of file
+        if self.view.sel()[0].b == self.view.size():
+            return False
+        return True
+
+    def run(self, edit):
+        window = self.view.window()
+        sel = self.view.sel()[0]
+        # ensure that Terminus output panel for Julia REPL is available
+        repl_ready = ensure_terminus_repl(window)
+        if sel.empty():
+            line_count = self.view.rowcol(self.view.size())[0]
+            # get start and end line of code cell
+            line_start = self.view.rowcol(sel.b)[0]
+            line_end = line_start
+            while line_start >= 0:
+                point = self.view.text_point(line_start, 0)
+                if self.view.substr(self.view.line(point)).startswith(CELL_DELIMITER):
+                    break
+                line_start -= 1
+            line_start += 1
+            while line_end <= line_count:
+                point = self.view.text_point(line_end, 0)
+                if self.view.substr(self.view.line(point)).startswith(CELL_DELIMITER):
+                    break
+                line_end += 1
+            code_block = ""
+            for line in range(line_start, line_end):
+                code_line = self.view.substr(self.view.line(self.view.text_point(line, 0)))
+                # remove empty and commented lines
+                if code_line and not code_line.lstrip().startswith("#"):
+                    code_block += code_line + "\n"
+            # select and scroll to next cell
+            next_cell = line_end + 1
+            while next_cell < line_count:
+                if not self.view.substr(self.view.line(self.view.text_point(next_cell, 0))).startswith("#"):
+                    break
+                next_cell += 1
+            c = self.view.text_point(next_cell, 0)
+            self.view.sel().clear()
+            self.view.run_command("lsp_selection_add", {"regions": [(c, c)]})
+            self.view.show_at_center(c)
+        else:
+            code_block = self.view.substr(sel)
+        if repl_ready:
+            send_terminus_repl(self.view.window(), code_block)
+        else:
+            sublime.set_timeout(lambda: send_terminus_repl(self.view.window(), code_block), 5)
 
 
 # class JuliaGetDocumentation(LspTextCommand):
