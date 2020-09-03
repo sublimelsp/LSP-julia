@@ -30,7 +30,7 @@
         "julia",
         "--startup-file=no",
         "--history-file=no",
-        "-e", "using LanguageServer, LanguageServer.SymbolServer; env_path=Base.load_path_expand(LOAD_PATH[2]); depot_path=first(Base.DEPOT_PATH); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)"
+        "-e", "using LanguageServer, LanguageServer.SymbolServer; env_path=Base.load_path_expand(LOAD_PATH[2]); depot_path=get(ENV, \"JULIA_DEPOT_PATH\", \"\"); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)"
     ],
     "languageId": "julia",
     "scopes": ["source.julia"],

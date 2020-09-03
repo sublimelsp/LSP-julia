@@ -75,10 +75,10 @@ def update_starting_command(env_path=None):
         command.append("--sysimage")
         command.append(sysimage_path)
         command.append("-e")
-        command.append("env_path={}; depot_path=first(Base.DEPOT_PATH); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)".format(env_path_str))
+        command.append("env_path={}; depot_path=get(ENV, \"JULIA_DEPOT_PATH\", \"\"); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)".format(env_path_str))
     else:
         command.append("-e")
-        command.append("using LanguageServer, LanguageServer.SymbolServer; env_path={}; depot_path=first(Base.DEPOT_PATH); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)".format(env_path_str))
+        command.append("using LanguageServer, LanguageServer.SymbolServer; env_path={}; depot_path=get(ENV, \"JULIA_DEPOT_PATH\", \"\"); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)".format(env_path_str))
     settings.set("command", command)
     sublime.save_settings(SETTINGS_FILE)
     return command
