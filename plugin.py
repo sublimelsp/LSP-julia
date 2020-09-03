@@ -209,6 +209,13 @@ class JuliaPrecompileLanguageServerCommand(sublime_plugin.WindowCommand):
         cache_path = os.path.join(sublime.cache_path(), "JuliaLanguageServer")
         if not os.path.exists(cache_path):
             os.mkdir(cache_path)
+        # copy precompile execution file to cache_path
+        precompile_execution_file = os.path.join(cache_path, "precompile_execution_file.jl")
+        if os.path.exists(precompile_execution_file):
+            os.remove(precompile_execution_file)
+        file = open(precompile_execution_file, "w")
+        file.write(sublime.load_resource("Packages/LSP-julia/precompile_execution_file.jl"))
+        file.close()
         # load and execute precompile script
         precompile_script = sublime.load_resource("Packages/LSP-julia/precompile.jl").replace("\n", ";")
         returncode = subprocess.call([julia_bin, "-e", precompile_script, cache_path, sysimage_path])
