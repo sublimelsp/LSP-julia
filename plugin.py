@@ -69,7 +69,7 @@ def update_starting_command(env_path=None):
         "--startup-file=no",
         "--history-file=no"
     ]
-    env_path_str = "raw\"{}\"".format(env_path) if env_path else "Base.load_path_expand(LOAD_PATH[2])"
+    env_path_str = "raw\"{}\"".format(env_path) if env_path else "dirname(Base.load_path_expand(LOAD_PATH[2]))"
     sysimage_path = settings.get("sysimage_path")
     if sysimage_path:
         command.append("--sysimage")
@@ -209,6 +209,7 @@ class JuliaPrecompileLanguageServerCommand(sublime_plugin.WindowCommand):
         cache_path = os.path.join(sublime.cache_path(), "JuliaLanguageServer")
         if not os.path.exists(cache_path):
             os.mkdir(cache_path)
+        # load and execute precompile script
         precompile_script = sublime.load_resource("Packages/LSP-julia/precompile.jl").replace("\n", ";")
         returncode = subprocess.call([julia_bin, "-e", precompile_script, cache_path, sysimage_path])
         if returncode == 0:
@@ -216,14 +217,19 @@ class JuliaPrecompileLanguageServerCommand(sublime_plugin.WindowCommand):
             sublime.save_settings(SETTINGS_FILE)
             env_path = get_active_environment()[1]
             update_starting_command(env_path)
-            sublime.message_dialog("The language server has successfully been precompiled into a custom sysimage, which will be used as soon as Sublime Text is restarted.")
+            sublime.message_dialog("The language server has successfully been precompiled into a sysimage, which will be used after Sublime Text is restarted.")
         else:
-            sublime.error_message("An error occured while precompiling the language server. Ensure to have PackageCompiler.jl installed in your default Julia environment!")
+            sublime.error_message("An error occured while precompiling the language server.")
 
 
 class SysimagePathInputHandler(sublime_plugin.TextInputHandler):
     def initial_text(self):
-        file_extension = "dll" if sublime.platform() == "windows" else "so"
+        if sublime.platform() == "windows":
+            file_extension = "dll"
+        elif sublime.platform() == "osx":
+            file_extension = "dylib"
+        else:
+            file_extension = "so"
         return os.path.expanduser(os.path.join("~", ".julia", "LanguageServer.{}".format(file_extension)))
 
     def validate(self, text):
