@@ -2,26 +2,27 @@
 
 [![License](https://img.shields.io/github/license/sublimelsp/LSP-julia)](https://github.com/sublimelsp/LSP-julia/blob/master/LICENSE)
 
-A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime Text 3 with support for the [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl) Julia language server.
+A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime Text 3 with support for the [Julia language server](https://github.com/julia-vscode/LanguageServer.jl).
 
-IMPORTANT: This plugin is still under development, so it might not work flawlessly yet and there could be some breaking changes in the future.
+IMPORTANT: This plugin only works on ST 3 right now, but it will be updated to the new LSP API for ST 4 and added to Package Control when there is a public release for ST 4.
 
 ## Installation
 
 * Install the [Julia](https://packagecontrol.io/packages/Julia) package from Package Control for syntax highlighting
-* Install the [LSP](https://packagecontrol.io/packages/LSP) client from Package Control
-* Clone this LSP-julia repository into your Packages directory.
-  I will probably wait until there is a public release of ST4 and then update this plugin to use the new LSP API, before adding it to the default Package Control channel, so that it won't suddenly break for ST3 users.
-* Install [PackageCompiler.jl](https://github.com/JuliaLang/PackageCompiler.jl) from the Julia REPL into your default Julia environment and then run the command `LSP-julia: Precompile Language Server` from within Sublime Text.
-  This will create a custom system image file for the language server, which will noticeably reduce its startup time.
-  Alternatively you can install [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl) from the Julia REPL into your default Julia environment (ensure to use version v3.2.0 or higher!):
+* Install the [LSP](https://packagecontrol.io/packages/LSP) package from Package Control
+* Clone this LSP-julia repository into your Packages directory
+* To install the language server, there are two options:
+  1. Run the command `LSP-julia: Precompile Language Server` from the command palette.
+     This will create a custom Julia system image file for the language server, which will noticeably reduce its startup time.
+     The precompilation process will take a few minutes, but this has to be done only when you update or switch to a different Julia version, or when a new version of the language server is released (and this LSP-julia package has been updated with the new version number accordingly).
+  2. Alternatively you can install the [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl) package from the Julia REPL into your default Julia environment (ensure to use version v3.2.0 or higher!):
 
     ```
     julia> ]
     pgk> add LanguageServer
     ```
 
-* Optionally install the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a better Julia REPL integration and additional features.
+* Optionally install the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a better Julia REPL integration and additional features (recommended).
 
 ## Features
 
@@ -31,13 +32,15 @@ LSP-julia provides additional commands which are available from the command pale
 
 | Command label | Key binding | Description |
 | ------------- | ----------- | ----------- |
-| LSP-julia: Precompile Language Server | none | Allows to precompile the server, which will noticeably reduce its startup time. The precompilation process will take a few minutes, but this command has to be run only when a new version of the language server is released (and this LSP-julia package has been updated with the new version numbers). Ensure to have PackageCompiler.jl added to your default Julia environment, before running this command! |
+| LSP-julia: Precompile Language Server | none | Allows to precompile the server, which will noticeably reduce its startup time. |
 | LSP-julia: Change Environment | none | Choose the Julia project environment you are working in. Its packages are used by the language server to provide autocomplete suggestions. The server will take a while for indexing packages after running this command. |
-| LSP-julia: Open REPL | none | Open a Julia REPL, started in the directory of the active file, or focus if already running. This command is only available if you have the Terminus package installed. |
+| LSP-julia: Open REPL<sup>1</sup> | none | Open a Julia REPL, started in the directory of the active file, or focus if already running. |
 | LSP-julia: Select Code Block | none | Select the function or code block at the current cursor position. For multiple active cursors, only the topmost cursor position is taken into account. |
-| LSP-julia: Run Code Block | <kbd>Alt</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code block containing the current cursor position and move curser to the next block. This command is only available if you have the Terminus package installed. |
-| LSP-julia: Run Code Cell | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code cell containing the current cursor position and move curser to the next cell. Code cells are signalized with a specially formatted comment at the start of a line: `##`. This command is only available if you have the Terminus package installed. |
-| LSP-julia: Expand Inline Function | none | Replace an inline (assignment form) function with the traditional function declaration syntax. Might crash the server if not run with the curser located inside an inline function. |
+| LSP-julia: Run Code Block<sup>1</sup> | <kbd>Alt</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code block containing the current cursor position and move curser to the next block. |
+| LSP-julia: Run Code Cell<sup>1</sup> | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code cell containing the current cursor position and move curser to the next cell. Code cells are signalized with a specially formatted comment at the start of a line: `##`. |
+<!-- | LSP-julia: Expand Inline Function | none | Replace an inline (assignment form) function with the traditional function declaration syntax. Might crash the server if not run with the curser located inside an inline function. | -->
+
+Commands marked with a <sup>1</sup> are only available if you have the Terminus package installed.
 
 To add or adjust key bindings for the commands, edit the `.sublime-keymap` file for your OS in your `Packages/User` folder.
 For an example refer to the [Default.sublime-keymap](Default.sublime-keymap) file in this repository, and for the command names see [LSP-julia.sublime-commands](LSP-julia.sublime-commands).
