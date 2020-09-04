@@ -94,7 +94,7 @@ def start_terminus_repl(window: sublime.Window, focus: bool):
     settings = sublime.load_settings(SETTINGS_FILE)
     julia_executable = settings.get("julia_executable_path") or "julia"
     # start in current project environment if available
-    cmd = [julia_executable, "--project"]
+    cmd = [julia_executable, "--banner=no", "--project"]
     window.run_command("terminus_open", {
         "cmd": cmd,
         "cwd": "${file_path:${folder}}",
