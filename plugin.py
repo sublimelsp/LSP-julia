@@ -19,7 +19,7 @@ SETTINGS_FILE = "LSP-julia.sublime-settings"
 STATUS_BAR_KEY = "lsp_clients_julia"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
-CELL_DELIMITER = "##"
+CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
 
 def merge_dicts(default: dict, user: dict):
@@ -386,13 +386,13 @@ class JuliaRunCodeCellCommand(LspTextCommand):
             line_end = line_start
             while line_start >= 0:
                 point = self.view.text_point(line_start, 0)
-                if self.view.substr(self.view.line(point)).startswith(CELL_DELIMITER):
+                if self.view.substr(self.view.line(point)).startswith(CELL_DELIMITERS):
                     break
                 line_start -= 1
             line_start += 1
             while line_end <= line_count:
                 point = self.view.text_point(line_end, 0)
-                if self.view.substr(self.view.line(point)).startswith(CELL_DELIMITER):
+                if self.view.substr(self.view.line(point)).startswith(CELL_DELIMITERS):
                     break
                 line_end += 1
             code_block = ""
