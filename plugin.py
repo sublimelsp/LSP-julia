@@ -22,30 +22,15 @@ JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
 
-def merge_dicts(default: dict, user: dict):
-    """ Recursively merges user into default """
-    for key, value in default.items():
-        if key in user:
-            new_value = user[key]
-            if isinstance(value, dict) and isinstance(new_value, dict):
-                yield key, dict(merge_dicts(value, new_value))
-            else:
-                # overwrite default value with user value
-                yield key, new_value
-        else:
-            yield key, value
-    # add all additional items from user
-    for key, value in user.items():
-        if key not in default:
-            yield key, value
-
-
+# custom Julia-specific extension to the LSP
+# @see https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
 def versioned_text_document_position_params(view: sublime.View, location: int):
     params = text_document_position_params(view, location)
     params["version"] = versioned_text_document_identifier(view)["version"]
     return params
 
 
+# read Julia project path from server starting command used in settings file to allow displaying its name in status bar
 def get_active_environment():
     settings = sublime.load_settings(SETTINGS_FILE)
     command = settings.get("command", [])
@@ -58,10 +43,13 @@ def get_active_environment():
     return env_name, env_path
 
 
+# check whether folder is a Julia project, i.e. it contains a Project.toml or JuliaProject.toml file
 def is_project_folder(env_path: str):
     return os.path.isfile(os.path.join(env_path, "Project.toml")) or os.path.isfile(os.path.join(env_path, "JuliaProject.toml"))
 
 
+# the language server requires to specify the active environment (Julia project) path in its starting command
+# @see https://github.com/julia-vscode/LanguageServer.jl/issues/748
 def update_starting_command(env_path=None):
     settings = sublime.load_settings(SETTINGS_FILE)
     command = [
@@ -84,12 +72,14 @@ def update_starting_command(env_path=None):
     return command
 
 
+# allows to update the Julia project name in the status bar for all Julia files of a window
 def update_environment_status(window: sublime.Window, env_name: str):
     for view in window.views():
         if view.match_selector(0, "source.julia"):
             view.set_status(STATUS_BAR_KEY, env_name)
 
 
+# start Julia REPL via Terminus package
 def start_terminus_repl(window: sublime.Window, focus: bool):
     settings = sublime.load_settings(SETTINGS_FILE)
     julia_executable = settings.get("julia_executable_path") or "julia"
@@ -105,6 +95,7 @@ def start_terminus_repl(window: sublime.Window, focus: bool):
     })
 
 
+# start Julia REPL via Terminus package if not already running
 def ensure_terminus_repl(window: sublime.Window):
     if not window.find_output_panel(JULIA_REPL_NAME):
         start_terminus_repl(window, False)
@@ -112,14 +103,15 @@ def ensure_terminus_repl(window: sublime.Window):
     return True
 
 
+# send a code block string to Julia REPL via Terminus package
 def send_terminus_repl(window: sublime.Window, code_block: str):
-    # ensure code block ends with newline
+    # ensure code block ends with newline, so that it will be executed in REPL
     if not code_block.endswith("\n"):
         code_block += "\n"
-    # send code block to Terminus Julia REPL
     window.run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
 
 
+# add Julia project name in status bar for newly opened files
 class JuliaFileListener(sublime_plugin.EventListener):
     def on_load(self, view: sublime.View):
         if not view.match_selector(0, "source.julia"):
@@ -147,19 +139,14 @@ class LspJuliaPlugin(LanguageHandler):
     @property
     def config(self):
         # load default and user configuration separately to allow merging of settings dicts
-        client_config_json = sublime.load_resource("Packages/{}/{}".format(__package__, SETTINGS_FILE))
-        client_config = sublime.decode_value(client_config_json)
+        client_config = sublime.decode_value(sublime.load_resource("Packages/{}/{}".format(__package__, SETTINGS_FILE)))
         client_config["enabled"] = True
         if os.path.exists(os.path.join(sublime.packages_path(), "User", SETTINGS_FILE)):
-            user_config_json = sublime.load_resource("Packages/User/{}".format(SETTINGS_FILE))
-            user_config = sublime.decode_value(user_config_json)
-            default_settings = client_config.get("settings", {})
-            user_settings = user_config.get("settings", {})
+            user_config = sublime.decode_value(sublime.load_resource("Packages/User/{}".format(SETTINGS_FILE)))
+            # merge settings dict
+            settings = client_config.get("settings", {})
+            settings.update(user_config.get("settings", {}))
             client_config.update(user_config)
-            # merge only settings dicts
-            settings = dict()
-            for key, value in merge_dicts(default_settings, user_settings):
-                settings[key] = value
             client_config["settings"] = settings
             # update starting command if server should be started with sysimage,
             # because sysimage_path in user settings might have been changed manually
@@ -198,7 +185,8 @@ class JuliaPrecompileLanguageServerCommand(sublime_plugin.WindowCommand):
         thread.start()
 
     def input(self, args):
-        return SysimagePathInputHandler()
+        if "sysimage_path" not in args:
+            return SysimagePathInputHandler()
 
     def input_description(self):
         return "Sysimage path"
@@ -231,13 +219,12 @@ class JuliaPrecompileLanguageServerCommand(sublime_plugin.WindowCommand):
 
 class SysimagePathInputHandler(sublime_plugin.TextInputHandler):
     def initial_text(self):
-        if sublime.platform() == "windows":
-            file_extension = "dll"
-        elif sublime.platform() == "osx":
-            file_extension = "dylib"
-        else:
-            file_extension = "so"
-        return os.path.expanduser(os.path.join("~", ".julia", "LanguageServer.{}".format(file_extension)))
+        file_extension = {
+            "windows": "dll",
+            "linux": "so",
+            "osx": "dylib"
+        }
+        return os.path.expanduser(os.path.join("~", ".julia", "LanguageServer.{}".format(file_extension[sublime.platform()])))
 
     def validate(self, text):
         return os.path.exists(os.path.dirname(text))
@@ -265,7 +252,8 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
             update_environment_status(self.view.window(), env_name)
 
     def input(self, args):
-        return EnvPathInputHandler(self.view)
+        if "env_path" not in args:
+            return EnvPathInputHandler(self.view)
 
 
 class EnvPathInputHandler(sublime_plugin.ListInputHandler):
