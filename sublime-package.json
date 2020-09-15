@@ -1,0 +1,204 @@
+{
+  "contributions": {
+    "settings": [
+      {
+        "file_patterns": ["/LSP-julia.sublime-settings"],
+        "schema": {
+          "properties": {
+            "julia_executable_path": {
+              "description": "Full path to the Julia executable (including the file)",
+              "type": "string",
+              "default": ""
+            },
+            "sysimage_path": {
+              "description": "Full path to the sysimage used to run the language server (including the file)",
+              "type": "string",
+              "default": ""
+            },
+            "repl_env_variables": {
+              "description": "Additional environmental variables for the Julia REPL",
+              "type": "object",
+              "properties": {
+                "JULIA_NUM_THREADS": {
+                  "description": "Maximum number of threads available to the Julia REPL",
+                  "type": "string",
+                  "default": "4"
+                }
+              }
+            },
+            "show_environment_status": {
+              "description": "Show name of the active Julia environment in the status bar",
+              "type": "boolean",
+              "default": true
+            },
+            "auto_change_environment": {
+              "description": "Automatically change the active Julia environment when server initializes",
+              "type": "boolean",
+              "default": true
+            },
+            "command": {
+              "markdownDescription": "Command to run the Julia language server\n\n*Should not be edited manually!*",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "languageId": {
+              "type": "string"
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "syntaxes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "settings": {
+              "description": "Language server configurations",
+              "type": "object",
+              // @see https://github.com/julia-vscode/julia-vscode/blob/master/package.json
+              "properties": {
+                "julia.format.calls": {
+                  "markdownDescription": "Format function calls.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.comments": {
+                  "markdownDescription": "Format comments.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.curly": {
+                  "markdownDescription": "Format braces.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.docs": {
+                  "markdownDescription": "Format inline documentation.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.indent": {
+                  "markdownDescription": "Indent size for formatting.",
+                  "type": "integer",
+                  "default": 4
+                },
+                "julia.format.indents": {
+                  "markdownDescription": "Format file indents.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.iterOps": {
+                  "markdownDescription": "Format loop iterators.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.keywords": {
+                  "markdownDescription": "Ensure single spacing following keywords.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.kwarg": {
+                  "markdownDescription": "Format whitespace around function keyword arguments.",
+                  "type": "string",
+                  "default": "none",
+                  "enum": ["none", "single", "off"]
+                },
+                "julia.format.lineends": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.ops": {
+                  "markdownDescription": "Format whitespace around operators.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.format.tuples": {
+                  "markdownDescription": "Format tuples.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.call": {
+                  "markdownDescription": "This compares call signatures against all known methods for the called function. Calls with too many or too few arguments, or unknown keyword parameters are highlighted.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.constif": {
+                  "markdownDescription": "Check for constant conditionals in if statements that result in branches never being reached.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.datadecl": {
+                  "markdownDescription": "Check variables used in type declarations are datatypes.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.disabledDirs": {
+                  "markdownDescription": "Specifies sub-directories in a package directory where only basic linting is. This drastically lowers the chance for false positives.",
+                  "type": "array",
+                  "default": ["docs", "test"],
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "julia.lint.iter": {
+                  "markdownDescription": "Check iterator syntax of loops. Will identify, for example, attempts to iterate over single values.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.lazy": {
+                  "markdownDescription": "Check for deterministic lazy boolean operators.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.missingrefs": {
+                  "markdownDescription": "Highlight unknown symbols. The `symbols` option will not mark unknown fields.",
+                  "type": "string",
+                  "default": "all",
+                  "enum": ["none", "symbols", "all"]
+                },
+                "julia.lint.modname": {
+                  "markdownDescription": "Check submodule names do not shadow their parent's name.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.nothingcomp": {
+                  "markdownDescription": "Check for use of `==` rather than `===` when comparing against `nothing`.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.pirates": {
+                  "markdownDescription": "Check for type piracy - the overloading of external functions with methods specified for external datatypes. 'External' here refers to imported code.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.run": {
+                  "markdownDescription": "Run the linter on active files.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.typeparam": {
+                  "markdownDescription": "Check parameters declared in `where` statements or datatype declarations are used.",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.lint.useoffuncargs": {
+                  "markdownDescription": "Check that all declared arguments are used within the function body.",
+                  "type": "boolean",
+                  "default": true
+                },
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ]
+  }
+}
