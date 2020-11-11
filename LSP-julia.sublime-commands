@@ -28,7 +28,7 @@
         "command": "julia_run_code_cell"
     },
     {
-        "caption": "LSP-julia: Open REPL",
+        "caption": "LSP-julia: Open Julia REPL",
         "command": "julia_open_repl"
     },
     {

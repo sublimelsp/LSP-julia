@@ -34,7 +34,7 @@ LSP-julia provides additional commands which are available from the command pale
 | ------------- | ----------- | ----------- |
 | LSP-julia: Precompile Language Server | none | Allows to precompile the server, which will noticeably reduce its startup time. |
 | LSP-julia: Change Environment | none | Choose the Julia project environment you are working in. Its packages are used by the language server to provide autocomplete suggestions. The server will take a while for indexing packages after running this command. |
-| LSP-julia: Open REPL<sup>1</sup> | none | Open a Julia REPL, started in the directory of the active file, or focus if already running. |
+| LSP-julia: Open Julia REPL<sup>1</sup> | none | Open a Julia REPL, started in the directory of the active file, or focus if already running. |
 | LSP-julia: Select Code Block | none | Select the function or code block at the current cursor position. For multiple active cursors, only the topmost cursor position is taken into account. |
 | LSP-julia: Run Code Block<sup>1</sup> | <kbd>Alt</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code block containing the current cursor position and move curser to the next block. |
 | LSP-julia: Run Code Cell<sup>1</sup> | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code cell containing the current cursor position and move curser to the next cell. Code cells are signalized with a specially formatted comment at the start of a line: `##`. |
