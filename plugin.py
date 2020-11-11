@@ -232,7 +232,7 @@ class SysimagePathInputHandler(sublime_plugin.TextInputHandler):
 
 class JuliaActivateEnvironmentCommand(LspTextCommand):
     def is_enabled(self):
-        return self.view.match_selector(0, "source.julia") and self.client_with_capability(None) is not None
+        return self.view.match_selector(0, "source.julia") and self.has_client_with_capability(None)
 
     def run(self, edit, env_path):
         if env_path[-1] in {"/", "\\"}:
@@ -285,7 +285,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
 
 class JuliaSelectCodeBlockCommand(LspTextCommand):
     def is_enabled(self):
-        return self.view.match_selector(0, "source.julia") and self.client_with_capability(None) is not None
+        return self.view.match_selector(0, "source.julia") and self.has_client_with_capability(None)
 
     def run(self, edit):
         # send julia/getCurrentBlockRange request
@@ -310,7 +310,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         if not importlib.find_loader("Terminus"):
             return False
         # Language Server must be ready
-        if not self.client_with_capability(None):
+        if not self.has_client_with_capability(None):
             return False
         # cursor must not be at end of file
         if self.view.sel()[0].b == self.view.size():
@@ -355,7 +355,7 @@ class JuliaRunCodeCellCommand(LspTextCommand):
         if not importlib.find_loader("Terminus"):
             return False
         # Language Server must be ready
-        if not self.client_with_capability(None):
+        if not self.has_client_with_capability(None):
             return False
         # cursor must not be at end of file
         if self.view.sel()[0].b == self.view.size():
@@ -457,4 +457,4 @@ class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
 
 class JuliaExecuteCommand(LspExecuteCommand):
     def is_enabled(self):
-        return self.view.match_selector(0, "source.julia") and self.client_with_capability(None) is not None
+        return self.view.match_selector(0, "source.julia") and self.has_client_with_capability(None)
