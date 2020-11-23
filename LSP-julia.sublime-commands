@@ -8,12 +8,12 @@
         }
     },
     {
-        "caption": "LSP-julia: Precompile Language Server",
-        "command": "julia_precompile_language_server"
-    },
-    {
         "caption": "LSP-julia: Change Environment",
         "command": "julia_activate_environment"
+    },
+    {
+        "caption": "LSP-julia: Open Julia REPL",
+        "command": "julia_open_repl"
     },
     {
         "caption": "LSP-julia: Select Code Block",
@@ -27,18 +27,14 @@
         "caption": "LSP-julia: Run Code Cell",
         "command": "julia_run_code_cell"
     },
-    {
-        "caption": "LSP-julia: Open Julia REPL",
-        "command": "julia_open_repl"
-    },
-    {
-        "caption": "LSP-julia: Expand Inline Function",
-        "command": "julia_execute",
-        "args": {
-            "command_name": "ExpandFunction",
-            "command_args": ["$file_uri", "$offset"]
-        }
-    },
+    // {
+    //     "caption": "LSP-julia: Expand Inline Function",
+    //     "command": "julia_execute",
+    //     "args": {
+    //         "command_name": "ExpandFunction",
+    //         "command_args": ["$file_uri", "$offset"]
+    //     }
+    // },
     // {
     //     "caption": "LSP-julia: Add Import Statement for Package Variable",
     //     "command": "julia_execute",

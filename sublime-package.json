@@ -6,60 +6,40 @@
         "schema": {
           "properties": {
             "julia_executable_path": {
-              "description": "Full path to the Julia executable (including the file)",
-              "type": "string",
-              "default": ""
-            },
-            "sysimage_path": {
-              "description": "Full path to the sysimage used to run the language server (including the file)",
+              "description": "Full path to the Julia executable (including the file itself).",
               "type": "string",
               "default": ""
             },
             "repl_env_variables": {
-              "description": "Additional environmental variables for the Julia REPL",
+              "description": "Additional environmental variables for the Julia REPL.",
               "type": "object",
               "properties": {
                 "JULIA_NUM_THREADS": {
-                  "description": "Maximum number of threads available to the Julia REPL",
+                  "description": "Maximum number of threads available to the Julia REPL.",
                   "type": "string",
                   "default": "4"
                 }
               }
             },
             "show_environment_status": {
-              "description": "Show name of the active Julia environment in the status bar",
-              "type": "boolean",
-              "default": true
-            },
-            "auto_change_environment": {
-              "description": "Automatically change the active Julia environment when server initializes",
+              "description": "Show name of the active Julia environment in the status bar.",
               "type": "boolean",
               "default": true
             },
             "command": {
-              "markdownDescription": "Command to run the Julia language server\n\n*Should not be edited manually!*",
+              "markdownDescription": "Command to run the Julia language server.\n\n*This should not be edited!*",
               "type": "array",
               "items": {
                 "type": "string"
               }
             },
-            "languageId": {
-              "type": "string"
-            },
-            "scopes": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "syntaxes": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "selector": {
+              "description": "Scope selector that specifies the documents to which the language server should be attached.",
+              "type": "string",
+              "default": "source.julia"
             },
             "settings": {
-              "description": "Language server configurations",
+              "description": "Language server configurations.",
               "type": "object",
               // @see https://github.com/julia-vscode/julia-vscode/blob/master/package.json
               "properties": {

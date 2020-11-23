@@ -1,68 +1,49 @@
 {
     // Set the full path to the Julia executable (including the executable
-    // itself) or leave empty if Julia is in your PATH.
+    // itself) or leave empty if Julia is in your PATH
     "julia_executable_path": "",
 
-    // Path to a custom sysimage with the precompiled language server. The full
-    // path to the sysimage file will automatically be added to your User
-    // settings after running the "LSP-julia: Precompile Language Server"
-    // command from the command palette. Leave empty if you don't want to use a
-    // custom sysimage.
-    "sysimage_path": "",
-
-    // Additional environmental variables for the Julia REPL.
+    // Additional environmental variables for the Julia REPL
     "repl_env_variables": {
         "JULIA_NUM_THREADS": "4"
     },
 
-    // Show name of the active Julia environment in the status bar.
+    // Show name of the active Julia project environment in the status bar
     "show_environment_status": true,
 
-    // If a Julia project folder is open in Sublime Text (i.e. it contains a
-    // Project.toml or JuliaProject.toml file), then change the environment
-    // automatically to this folder when the language server has initialized.
-    // If multiple project folders are open in a single window, it will choose
-    // the first one.
-    "auto_change_environment": true,
-
     // Language server configurations
-    "command": [
-        "julia",
-        "--startup-file=no",
-        "--history-file=no",
-        "-e", "using LanguageServer, LanguageServer.SymbolServer; env_path=Base.load_path_expand(LOAD_PATH[2]); depot_path=get(ENV, \"JULIA_DEPOT_PATH\", \"\"); server=LanguageServer.LanguageServerInstance(stdin,stdout,env_path,depot_path); run(server)"
-    ],
-    "languageId": "julia",
-    "scopes": ["source.julia"],
-    "syntaxes": ["Packages/Julia/Julia.sublime-syntax"],
+    "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--sysimage", "$sysimage_path", "--eval", "runserver()"],
+    "selector": "source.julia",
+
+    // @see https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/requests/workspace.jl
     "settings": {
-        "julia.format.calls": true,      // Format function calls.
-        "julia.format.comments": true,   // Format comments.
-        "julia.format.curly": true,      // Format braces.
-        "julia.format.docs": true,       // Format inline documentation.
-        "julia.format.indent": 4,        // Indent size for formatting.
-        "julia.format.indents": true,    // Format file indents.
-        "julia.format.iterOps": true,    // Format loop iterators.
-        "julia.format.keywords": true,   // Ensure single spacing following keywords.
-        "julia.format.kwarg": "none",    // Format whitespace around function keyword arguments. Valid values: "none", "single", "off"
-        "julia.format.lineends": true,   // [undocumented]
-        "julia.format.ops": true,        // Format whitespace around operators.
-        "julia.format.tuples": true,     // Format tuples.
-        "julia.lint.call": true,         // This compares call signatures against all known methods for the called function. Calls with too many or too few arguments, or unknown keyword parameters are highlighted.
-        "julia.lint.constif": true,      // Check for constant conditionals in if statements that result in branches never being reached.
-        "julia.lint.datadecl": true,     // Check variables used in type declarations are datatypes.
-        "julia.lint.disabledDirs": [     // Specifies sub-directories in a package directory where only basic linting is. This drastically lowers the chance for false positives.
+        "julia.format.calls": true,       // Format function calls.
+        "julia.format.comments": true,    // Format comments.
+        "julia.format.curly": true,       // Format braces.
+        "julia.format.docs": true,        // Format inline documentation.
+        "julia.format.indent": 4,         // Indent size for formatting.
+        "julia.format.indents": true,     // Format file indents.
+        "julia.format.iterOps": true,     // Format loop iterators.
+        "julia.format.keywords": true,    // Ensure single spacing following keywords.
+        "julia.format.kwarg": "none",     // Format whitespace around function keyword arguments. Valid values: "none", "single", "off"
+        "julia.format.lineends": true,    // [undocumented]
+        "julia.format.ops": true,         // Format whitespace around operators.
+        "julia.format.tuples": true,      // Format tuples.
+        "julia.lint.call": true,          // This compares call signatures against all known methods for the called function. Calls with too many or too few arguments, or unknown keyword parameters are highlighted.
+        "julia.lint.constif": true,       // Check for constant conditionals in if statements that result in branches never being reached.
+        "julia.lint.datadecl": true,      // Check variables used in type declarations are datatypes.
+        "julia.lint.disabledDirs": [      // Specifies sub-directories in a package directory where only basic linting is. This drastically lowers the chance for false positives.
             "docs",
             "test"
         ],
-        "julia.lint.iter": true,         // Check iterator syntax of loops. Will identify, for example, attempts to iterate over single values.
-        "julia.lint.lazy": true,         // Check for deterministic lazy boolean operators.
-        "julia.lint.missingrefs": "all", // Highlight unknown symbols. The `symbols` option will not mark unknown fields. Valid values: "all", "symbols", "none"
-        "julia.lint.modname": true,      // Check submodule names do not shadow their parent's name.
-        "julia.lint.nothingcomp": true,  // Check for use of `==` rather than `===` when comparing against `nothing`.
-        "julia.lint.pirates": true,      // Check for type piracy - the overloading of external functions with methods specified for external datatypes. 'External' here refers to imported code.
-        "julia.lint.run": true,          // Run the linter on active files.
-        "julia.lint.typeparam": true,    // Check parameters declared in `where` statements or datatype declarations are used.
-        "julia.lint.useoffuncargs": true // Check that all declared arguments are used within the function body.
+        "julia.lint.iter": true,          // Check iterator syntax of loops. Will identify, for example, attempts to iterate over single values.
+        "julia.lint.lazy": true,          // Check for deterministic lazy boolean operators.
+        "julia.lint.missingrefs": "none", // Highlight unknown symbols. The `symbols` option will not mark unknown fields. Valid values: "none", "symbols", "all"
+        "julia.lint.modname": true,       // Check submodule names do not shadow their parent's name.
+        "julia.lint.nothingcomp": true,   // Check for use of `==` rather than `===` when comparing against `nothing`.
+        "julia.lint.pirates": true,       // Check for type piracy - the overloading of external functions with methods specified for external datatypes. 'External' here refers to imported code.
+        "julia.lint.run": true,           // Run the linter on active files.
+        "julia.lint.typeparam": true,     // Check parameters declared in `where` statements or datatype declarations are used.
+        "julia.lint.useoffuncargs": true  // Check that all declared arguments are used within the function body.
     }
 }
