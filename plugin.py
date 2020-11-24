@@ -1,12 +1,12 @@
 from LSP.plugin import AbstractPlugin, ClientConfig, Notification, Request, Session, WorkspaceFolder, register_plugin, unregister_plugin
 from LSP.plugin.execute_command import LspExecuteCommand
 from LSP.plugin.core.protocol import Point
-from LSP.plugin.core.registry import LspTextCommand, best_session, sessions_for_view
-from LSP.plugin.core.typing import Any, Dict, List, Optional, Tuple
+from LSP.plugin.core.registry import LspTextCommand
+# from LSP.plugin.core.registry import best_session, sessions_for_view
+from LSP.plugin.core.typing import Any, Dict, List, Optional
 from LSP.plugin.core.views import text_document_position_params, point_to_offset
 import importlib
 import os
-import re
 import shutil
 import sublime
 import sublime_plugin
