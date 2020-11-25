@@ -60,7 +60,7 @@ def send_julia_repl(window: sublime.Window, code_block: str) -> None:
 
 def versioned_text_document_position_params(view: sublime.View, location: int) -> Dict[str, Any]:
     """
-    Custom Julia-specific extension to LSP.
+    Custom Julia-specific extension to the LSP.
 
     @see https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
     """
@@ -73,7 +73,6 @@ def is_julia_environment(folder_path: str) -> bool:
     """
     Check whether a given folder path is a valid Julia project environment, i.e. it contains a file Project.toml
     or JuliaProject.toml.
-
     """
     return os.path.isfile(os.path.join(folder_path, "Project.toml")) or os.path.isfile(os.path.join(folder_path, "JuliaProject.toml"))
 
@@ -84,7 +83,7 @@ def find_julia_environment(folder_path: str) -> Optional[str]:
     """
     while os.path.basename(folder_path):
         if is_julia_environment(folder_path):
-            return os.path.basename(folder_path)
+            return folder_path
         else:
             folder_path = os.path.dirname(folder_path)
     return None
@@ -97,15 +96,13 @@ class JuliaLanguageServer(AbstractPlugin):
         settings = sublime.load_settings(SETTINGS_FILE)
         if settings.get("show_environment_status"):
             session = weaksession()
-            # TODO: use the folder of the initiating view to find the Julia project environment name, because we use
-            #       that folder as the working directory of the language server in on_pre_start, which itself is used
-            #       by the server to find the Julia project environment. 
             workspace_folders = session.get_workspace_folders()
             if workspace_folders:
-                env_name = find_julia_environment(workspace_folders[0].path) or JuliaLanguageServer.default_julia_environment()
+                env_path = find_julia_environment(workspace_folders[0].path)
+                env_name = os.path.basename(env_path) if env_path else JuliaLanguageServer.default_julia_environment()
                 session.set_window_status_async(STATUS_BAR_KEY, env_name)
             else:
-                # TODO: how to get the Julia project environment without workspace folders?
+                # TODO: get the Julia project environment from the initiating view if there are no workspace folders
                 session.set_window_status_async(STATUS_BAR_KEY, "Single File Mode")
 
     @classmethod
@@ -153,7 +150,7 @@ class JuliaLanguageServer(AbstractPlugin):
     @classmethod
     def needs_update_or_installation(cls) -> bool:
         if not shutil.which(cls.julia_exe()):
-            msg = "The executable \"{}\" could not be found. Set up the path to the Julia executable by running the command\n\n\tPreferences: LSP-Julia Settings\n\nfrom the command palette.".format(cls.julia_exe())
+            msg = "The executable \"{}\" could not be found. Set up the path to the Julia executable by running the command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.".format(cls.julia_exe())
             raise RuntimeError(msg)
         return not os.path.isfile(cls.sysimage_path())
 
@@ -171,11 +168,16 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def on_pre_start(cls, window: sublime.Window, initiating_view: sublime.View, workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
-        # set the working directory of the language server to the directory of the initiating view, because the server uses
-        # its working directory to find the Julia project environment if not explicitly given in the starting arguments
-        file_path = initiating_view.file_name()  # TODO: maybe use workspace folder instead?
+        # set the working directory of the language server to the first workspace folder, because the server uses its
+        # working directory to find the Julia project environment if not explicitly given in the starting arguments
+        if workspace_folders:
+            # use first workspace folder if exists
+            return workspace_folders[0].path
+        file_path = initiating_view.file_name()
         if file_path:
+            # otherwise use folder of initiating view
             return os.path.dirname(file_path)
+        return None
 
     # @classmethod
     # def on_post_start(cls, window: sublime.Window, initiating_view: sublime.View, workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> None:
@@ -184,10 +186,11 @@ class JuliaLanguageServer(AbstractPlugin):
     #         file_path = initiating_view.file_name()
     #         if file_path:
     #             folder_path = os.path.dirname(file_path)
-    #             julia_environment = find_julia_environment(folder_path) or cls.default_julia_environment()
+    #             env_path = find_julia_environment(os.path.dirname(file_path))
+    #             env_name = os.path.basename(env_path) if env_path else cls.default_julia_environment()
     #             session = best_session(sessions_for_view(initiating_view), 0)
     #             if session:
-    #                 session.set_window_status_async(STATUS_BAR_KEY, julia_environment)
+    #                 session.set_window_status_async(STATUS_BAR_KEY, env_name)
 
 
 def plugin_loaded() -> None:
@@ -415,4 +418,4 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
 
 
 class JuliaExecuteCommand(LspExecuteCommand):
-    session_name = "julia"  # TODO: this is currently ignored, because capability is defined in LspExecuteCommand
+    session_name = "julia"
