@@ -165,9 +165,9 @@ class JuliaLanguageServer(AbstractPlugin):
         # TODO: maybe add a user dialog first, because the precompilation takes several minutes and the resulting file size will be ~200MB
         returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", os.path.join(cls.packagedir(), "precompile.jl"), cls.packagedir(), cls.sysimage_path()])
         if returncode == 0:
-            sublime.active_window().status_message("The Julia Language Server was successfully precompiled into a sysimage.")
+            sublime.active_window().status_message("The Julia Language Server was successfully precompiled into a sysimage")
         else:
-            sublime.error_message("An error occured while precompiling the Julia Language Server.")
+            sublime.error_message("An error occured while precompiling the Julia Language Server")
 
     @classmethod
     def on_pre_start(cls, window: sublime.Window, initiating_view: sublime.View, workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
@@ -208,6 +208,19 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
     session_name = "julia"
 
     def run(self, edit, env_path):
+    #     if env_path == "Open a folder dialog to select a Julia environment":
+    #         sublime.select_folder_dialog(on_select_folder)
+    #     else:
+    #         self.activate_environment(env_path)
+
+    # def on_select_folder(self, folder_path):
+    #     if folder_path:
+    #         if is_julia_environment(folder_path):
+    #             self.activate_environment(folder_path)
+    #         else:
+    #             sublime.active_window().status_message("The selected folder is no valid Julia environment")
+
+    # def activate_environment(self, env_path):
         session = self.session_by_name(self.session_name)
         session.send_notification(Notification("julia/activateenvironment", env_path))
         settings = sublime.load_settings(SETTINGS_FILE)
@@ -240,6 +253,8 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         for workspace_folder in reversed(self.workspace_folders):
             if workspace_folder.path not in julia_env_paths and is_julia_environment(workspace_folder.path):
                 julia_environments.insert(0, [workspace_folder.name, workspace_folder.path])
+        # add option for file dialog
+        # julia_environments.insert(0, ["Choose folder...", "Open a folder dialog to select a Julia environment"])
         return julia_environments
 
     def placeholder(self):
