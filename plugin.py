@@ -112,18 +112,22 @@ def send_terminus_repl(window: sublime.Window, code_block: str):
 
 
 # add Julia project name in status bar for newly opened files
-class JuliaFileListener(sublime_plugin.EventListener):
-    def on_load(self, view: sublime.View):
-        if not view.match_selector(0, "source.julia"):
-            return
+class JuliaFileListener(sublime_plugin.ViewEventListener):
+
+    @classmethod
+    def is_applicable(cls, settings):
+        if not settings.get("syntax").endswith("Julia.sublime-syntax"):
+            return False
+        lsp_settings = sublime.load_settings(SETTINGS_FILE)
+        return lsp_settings.get("enabled", True)
+
+    def on_load_async(self):
         settings = sublime.load_settings(SETTINGS_FILE)
-        if not settings.get("enabled", True):
-            return
         if not settings.get("show_environment_status"):
             return
         env_name = get_active_environment()[0]
         if env_name:
-            view.set_status(STATUS_BAR_KEY, env_name)
+            self.view.set_status(STATUS_BAR_KEY, env_name)
 
 
 class LspJuliaPlugin(LanguageHandler):
