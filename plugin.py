@@ -176,7 +176,8 @@ class LspJuliaPlugin(LanguageHandler):
             for folder in self._window.folders():
                 if is_project_folder(folder):
                     if folder != current_env_path:
-                        client.send_notification(Notification("julia/activateenvironment", folder))
+                        client.send_notification(Notification("julia/activateenvironment", folder))  # LanguageServer.jl v3.2.0
+                        # client.send_notification(Notification("julia/activateenvironment", {"envPath": folder}))  # since https://github.com/julia-vscode/LanguageServer.jl/commit/67ebb6411e5036b7793ac7864b4ed693371838ed
                         update_starting_command(folder)
                     break
         if settings.get("show_environment_status"):
@@ -247,7 +248,10 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
 
         # send julia/activateenvironment notification
         client = self.client_with_capability(None)
-        client.send_notification(Notification("julia/activateenvironment", env_path))
+
+        # The API for julia/activateenvironment changed, and the updated version also requires a new release of JSONRPC.jl first (currently use `add JSONRPC#master` as a workaround)
+        client.send_notification(Notification("julia/activateenvironment", env_path))  # LanguageServer.jl v3.2.0
+        # client.send_notification(Notification("julia/activateenvironment", {"envPath": env_path}))  # since https://github.com/julia-vscode/LanguageServer.jl/commit/67ebb6411e5036b7793ac7864b4ed693371838ed
 
         # update settings
         update_starting_command(env_path)
