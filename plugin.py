@@ -16,7 +16,7 @@ from LSP.plugin.execute_command import LspExecuteCommand
 
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
-STATUS_BAR_KEY = "lsp_clients_julia"
+STATUS_BAR_KEY = "lsp_julia_environment"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
@@ -76,7 +76,10 @@ def update_starting_command(env_path=None):
 def update_environment_status(window: sublime.Window, env_name: str):
     for view in window.views():
         if view.match_selector(0, "source.julia"):
-            view.set_status(STATUS_BAR_KEY, env_name)
+            if view.settings().get("lsp_active"):
+                view.set_status(STATUS_BAR_KEY, env_name)
+            else:
+                view.erase_status(STATUS_BAR_KEY)
 
 
 # start Julia REPL via Terminus package
