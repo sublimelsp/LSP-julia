@@ -1,19 +1,21 @@
+| :information_source: This branch is only compatible with Sublime Text 4 *and requires a version >= Build 4095*. For the ST3 version please switch to the [st3 branch](https://github.com/sublimelsp/LSP-julia/tree/st3). | ---
+
 # LSP-julia
 
 [![License](https://img.shields.io/github/license/sublimelsp/LSP-julia)](https://github.com/sublimelsp/LSP-julia/blob/master/LICENSE)
 
 A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime Text with support for the [Julia language server](https://github.com/julia-vscode/LanguageServer.jl).
 
-**Warning: This is an experimental branch for ST 4, but it is not tested yet and might not work**
+## Requirements & Installation
 
-## Installation
-
-* [Julia](https://julialang.org/) must be installed on your machine. If the `julia` executable is not in your PATH, you will need to specify the full path to it in your LSP-julia settings.
-* Install the [Julia](https://packagecontrol.io/packages/Julia) package from Package Control for syntax highlighting.
+* [Julia](https://julialang.org/) (version 1.0 or above) must be installed on your machine.
+  If the `julia` executable is not in your PATH, you need to provide the full path to the executable in the LSP-julia package settings.
+* The [Julia](https://packagecontrol.io/packages/Julia) package from Package Control should be installed for syntax highlighting and allows the language server to start for Julia source files.
 * Install the [LSP](https://packagecontrol.io/packages/LSP) package from Package Control.
-* Clone the `st4` branch of this LSP-julia repository into your Packages directory. Ensure that the folder is named `LSP-julia`.
-* Optionally install the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a better Julia REPL integration and additional features (recommended).
-* After opening a Julia file, wait for the language server to download and precompile. The precompilation process can take several minutes, but it only needs to be done again if there is a new release of LanguageServer.jl or if you update or switch to a different Julia version.
+* (For now) clone this repository into your Packages directory of Sublime Text and checkout the `main` branch (or manually copy the file from this branch).
+  Ensure that the folder is named `LSP-julia`.
+  When a Julia time is opened the first time after installing this package, it will automatically install a compatible version of the language server via the Julia package manager.
+* Optionally install the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a simple Julia REPL integration and some functionality to run code in that REPL panel (see below).
 
 ## Features
 

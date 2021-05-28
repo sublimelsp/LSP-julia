@@ -8,11 +8,11 @@
         "JULIA_NUM_THREADS": "4"
     },
 
-    // Show name of the active Julia project environment in the status bar
+    // Show name of the active Julia project/environment in the status bar
     "show_environment_status": true,
 
     // Language server configurations
-    "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--sysimage", "$sysimage_path", "--eval", "runserver()"],
+    "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer, SymbolServer; runserver()"],
     "selector": "source.julia",
 
     // @see https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/requests/workspace.jl
@@ -44,6 +44,7 @@
         "julia.lint.pirates": true,       // Check for type piracy - the overloading of external functions with methods specified for external datatypes. 'External' here refers to imported code.
         "julia.lint.run": true,           // Run the linter on active files.
         "julia.lint.typeparam": true,     // Check parameters declared in `where` statements or datatype declarations are used.
-        "julia.lint.useoffuncargs": true  // Check that all declared arguments are used within the function body.
+        "julia.lint.useoffuncargs": true, // Check that all declared arguments are used within the function body.
+        "julia.completionmode": "import", // Sets the mode for completions. Valid values: "exportedonly", "import", "qualify"
     }
 }

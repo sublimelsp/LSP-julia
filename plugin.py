@@ -1,8 +1,7 @@
-from LSP.plugin import AbstractPlugin, ClientConfig, Notification, Request, Session, WorkspaceFolder, register_plugin, unregister_plugin
+from LSP.plugin import AbstractPlugin, ClientConfig, Notification, Request, WorkspaceFolder, register_plugin, unregister_plugin
 from LSP.plugin.execute_command import LspExecuteCommand
 from LSP.plugin.core.protocol import Point
 from LSP.plugin.core.registry import LspTextCommand
-# from LSP.plugin.core.registry import best_session, sessions_for_view
 from LSP.plugin.core.typing import Any, Dict, List, Optional
 from LSP.plugin.core.views import text_document_position_params, point_to_offset
 import importlib
@@ -91,19 +90,18 @@ def find_julia_environment(folder_path: str) -> Optional[str]:
 
 class JuliaLanguageServer(AbstractPlugin):
 
-    def __init__(self, weaksession: 'weakref.ref[Session]') -> None:
+    def __init__(self, weaksession) -> None:
         super().__init__(weaksession)
-        settings = sublime.load_settings(SETTINGS_FILE)
-        if settings.get("show_environment_status"):
-            session = weaksession()
+        if sublime.load_settings(SETTINGS_FILE).get("show_environment_status"):
+            session = self.weaksession()
             workspace_folders = session.get_workspace_folders()
             if workspace_folders:
                 env_path = find_julia_environment(workspace_folders[0].path)
                 env_name = os.path.basename(env_path) if env_path else JuliaLanguageServer.default_julia_environment()
-                session.set_window_status_async(STATUS_BAR_KEY, env_name)
+                session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))  # TODO does not work
             else:
                 # TODO: get the Julia project environment from the initiating view if there are no workspace folders
-                session.set_window_status_async(STATUS_BAR_KEY, "Single File Mode")
+                session.set_window_status_async(STATUS_BAR_KEY, "Julia env: ???")
 
     @classmethod
     def name(cls) -> str:
@@ -113,12 +111,12 @@ class JuliaLanguageServer(AbstractPlugin):
     def additional_variables(cls) -> Optional[Dict[str, str]]:
         variables = dict()
         variables["julia_exe"] = cls.julia_exe()
-        variables["sysimage_path"] = cls.sysimage_path()
+        variables["server_path"] = os.path.join(cls.basedir(), cls.server_version())
         return variables
 
     @classmethod
     def basedir(cls) -> str:
-        return os.path.join(cls.storage_path(), cls.name())
+        return os.path.join(cls.storage_path(), "LSP-julia")
 
     @classmethod
     def packagedir(cls) -> str:
@@ -139,32 +137,30 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def server_version(cls) -> str:
-        # return "3.2.0"
-        return "f5911cb"
-
-    @classmethod
-    def sysimage_path(cls) -> str:
-        file_extension = {"windows": ".dll", "linux": ".so", "osx": ".dylib"}[sublime.platform()]
-        return os.path.join(cls.basedir(), "Julia-{}-LanguageServer-{}{}".format(cls.julia_version(), cls.server_version(), file_extension))
+        return "7ead5c8"  # LanguageServer v4.0.0
 
     @classmethod
     def needs_update_or_installation(cls) -> bool:
         if not shutil.which(cls.julia_exe()):
             msg = "The executable \"{}\" could not be found. Set up the path to the Julia executable by running the command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.".format(cls.julia_exe())
             raise RuntimeError(msg)
-        return not os.path.isfile(cls.sysimage_path())
+        return not os.path.isfile(os.path.join(cls.basedir(), cls.server_version(), "ready"))
 
     @classmethod
     def install_or_update(cls) -> None:
         shutil.rmtree(cls.basedir(), ignore_errors=True)
-        os.makedirs(cls.basedir(), exist_ok=True)
-        sublime.active_window().status_message("Precompiling Julia Language Server...")
-        # TODO: maybe add a user dialog first, because the precompilation takes several minutes and the resulting file size will be ~200MB
-        returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", os.path.join(cls.packagedir(), "precompile.jl"), cls.packagedir(), cls.sysimage_path()])
+        serverdir = os.path.join(cls.basedir(), cls.server_version())
+        os.makedirs(serverdir, exist_ok=True)
+        shutil.copy(os.path.join(cls.packagedir(), "server", "Project.toml"), serverdir)
+        shutil.copy(os.path.join(cls.packagedir(), "server", "Manifest.toml"), serverdir)
+        returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", "--project=\"{}\"".format(serverdir), "--eval", "\"import Pkg; Pkg.instantiate()\""])
         if returncode == 0:
-            sublime.active_window().status_message("The Julia Language Server was successfully precompiled into a sysimage")
+            # create a dummy file to indicate that the installation was successful
+            open(os.path.join(serverdir, "ready"), 'a').close()
+            sublime.active_window().status_message("The Julia Language Server has successfully been installed")
         else:
-            sublime.error_message("An error occured while precompiling the Julia Language Server")
+            error_msg = "An error occured while trying to install the Language Server. Check the console for possible error messages or consider to open an issue in the LSP-julia issue tracker on GitHub."
+            sublime.error_message(error_msg)
 
     @classmethod
     def on_pre_start(cls, window: sublime.Window, initiating_view: sublime.View, workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
@@ -177,20 +173,9 @@ class JuliaLanguageServer(AbstractPlugin):
         if file_path:
             # otherwise use folder of initiating view
             return os.path.dirname(file_path)
+        # if neither workspace folder exists nor initiating view is a saved file,
+        # then runserver() will fall back to the default Julia environment
         return None
-
-    # @classmethod
-    # def on_post_start(cls, window: sublime.Window, initiating_view: sublime.View, workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> None:
-    #     settings = sublime.load_settings(SETTINGS_FILE)
-    #     if settings.get("show_environment_status"):
-    #         file_path = initiating_view.file_name()
-    #         if file_path:
-    #             folder_path = os.path.dirname(file_path)
-    #             env_path = find_julia_environment(os.path.dirname(file_path))
-    #             env_name = os.path.basename(env_path) if env_path else cls.default_julia_environment()
-    #             session = best_session(sessions_for_view(initiating_view), 0)
-    #             if session:
-    #                 session.set_window_status_async(STATUS_BAR_KEY, env_name)
 
 
 def plugin_loaded() -> None:
@@ -210,26 +195,27 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
 
     session_name = "julia"
 
-    def run(self, edit, env_path):
-    #     if env_path == "Open a folder dialog to select a Julia environment":
-    #         sublime.select_folder_dialog(on_select_folder)
-    #     else:
-    #         self.activate_environment(env_path)
+    def run(self, edit: sublime.Edit, env_path):
+        if env_path == "__select_folder_dialog":
+            sublime.select_folder_dialog(self.on_select_folder)
+        else:
+            self.activate_environment(env_path)
 
-    # def on_select_folder(self, folder_path):
-    #     if folder_path:
-    #         if is_julia_environment(folder_path):
-    #             self.activate_environment(folder_path)
-    #         else:
-    #             sublime.active_window().status_message("The selected folder is no valid Julia environment")
+    def on_select_folder(self, folder_path):
+        if folder_path:
+            if is_julia_environment(folder_path):
+                self.activate_environment(folder_path)
+            else:
+                sublime.active_window().status_message("The selected folder is not a valid Julia environment")
 
-    # def activate_environment(self, env_path):
+    def activate_environment(self, env_path):
         session = self.session_by_name(self.session_name)
-        session.send_notification(Notification("julia/activateenvironment", env_path))
-        settings = sublime.load_settings(SETTINGS_FILE)
-        if settings.get("show_environment_status"):
+        if not session:
+            return
+        session.send_notification(Notification("julia/activateenvironment", {"envPath": env_path}))
+        if sublime.load_settings(SETTINGS_FILE).get("show_environment_status"):
             env_name = os.path.basename(env_path)
-            session.set_window_status_async(STATUS_BAR_KEY, env_name)
+            session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
 
     def input(self, args):
         if "env_path" not in args:
@@ -249,22 +235,25 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     def list_items(self):
         # add default Julia environments from .julia/environments
         julia_env_home = os.path.expanduser(os.path.join("~", ".julia", "environments"))
-        julia_env_names = [env for env in os.listdir(julia_env_home) if os.path.isdir(os.path.join(julia_env_home, env))]
-        julia_env_paths = [os.path.join(julia_env_home, env) for env in julia_env_names]
-        julia_environments = [list(env) for env in zip(julia_env_names, julia_env_paths)]
-        # add workspace folders if they are valid Julia project environments
+        names = [env for env in os.listdir(julia_env_home) if os.path.isdir(os.path.join(julia_env_home, env))]  # collect all folder names in .julia/environments
+        paths = [os.path.join(julia_env_home, env) for env in names]  # the corresponding folder paths
+        items = [sublime.ListInputItem(name, path, kind=(sublime.KIND_ID_COLOR_YELLOWISH, "d", "default environment")) for name, path in zip(names, paths)]
+        # add workspace folders on top of the list if they are valid Julia project environments
         for workspace_folder in reversed(self.workspace_folders):
-            if workspace_folder.path not in julia_env_paths and is_julia_environment(workspace_folder.path):
-                julia_environments.insert(0, [workspace_folder.name, workspace_folder.path])
-        # add option for file dialog
-        # julia_environments.insert(0, ["Choose folder...", "Open a folder dialog to select a Julia environment"])
-        return julia_environments
+            if workspace_folder.path not in paths and is_julia_environment(workspace_folder.path):
+                items.insert(0, sublime.ListInputItem(workspace_folder.name, workspace_folder.path, kind=(sublime.KIND_ID_COLOR_PURPLISH, "f", "workspace folder")))
+        # add option for folder picker dialog
+        items.insert(0, sublime.ListInputItem("(pick a folder…)", "__select_folder_dialog"))
+        return items
 
     def placeholder(self):
         return "Select Julia project/environment folder"
 
     def preview(self, value):
-        return sublime.Html("<i>{}</i>".format(value)) if value else None
+        if value == "__select_folder_dialog":
+            return "Open a folder picker dialog to select a Julia project"
+        else:
+            return sublime.Html("<i>{}</i>".format(value)) if value else None
 
     def validate(self, value):
         return value is not None
@@ -305,7 +294,6 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
         b = point_to_offset(Point.from_lsp(params[1]), self.view)
         self.view.sel().clear()
         self.view.run_command("lsp_selection_add", {"regions": [(a, b)]})
-        # self.view.show_at_center(sublime.Region(a, b))
 
 
 class JuliaRunCodeBlockCommand(LspTextCommand):
@@ -330,7 +318,8 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
 
     def run(self, edit: sublime.Edit) -> None:
         window = self.view.window()
-        repl_ready = ensure_julia_repl(window)  # ensure that Terminus output panel for Julia REPL is available
+        # ensure that Terminus output panel for Julia REPL is available
+        repl_ready = ensure_julia_repl(window)  # type: ignore # view.window() can in theory return None if the tab was closed in the meantime, but thats probably irrelevant here
         sel = self.view.sel()[0]
         if sel.empty():
             params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
@@ -339,10 +328,10 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         else:
             code_block = self.view.substr(sel)
             if repl_ready:
-                send_julia_repl(window, code_block)
+                send_julia_repl(window, code_block)  # type: ignore
             else:
                 # give Terminus a bit time to initialize, otherwise the terminus_send_string command doesn't work
-                sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)
+                sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)  # type: ignore
 
     def on_result(self, params: Any) -> None:
         a = point_to_offset(Point.from_lsp(params[0]), self.view)
@@ -352,7 +341,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         self.view.sel().clear()
         self.view.run_command("lsp_selection_add", {"regions": [(c, c)]})  # move cursor to next code block
         self.view.show_at_center(c)
-        send_julia_repl(self.view.window(), code_block)
+        send_julia_repl(self.view.window(), code_block)  # type: ignore
 
 
 class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
@@ -376,7 +365,7 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
     def run(self, edit: sublime.Edit) -> None:
         window = self.view.window()
         sel = self.view.sel()[0]
-        repl_ready = ensure_julia_repl(window)
+        repl_ready = ensure_julia_repl(window)  # type: ignore
         if sel.empty():
             line_count = self.view.rowcol(self.view.size())[0]
             # get start and end line of code cell
@@ -412,9 +401,9 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
         else:
             code_block = self.view.substr(sel)
         if repl_ready:
-            send_julia_repl(window, code_block)
+            send_julia_repl(window, code_block)  # type: ignore
         else:
-            sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)
+            sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)  # type: ignore
 
 
 class JuliaExecuteCommand(LspExecuteCommand):

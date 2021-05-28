@@ -172,6 +172,17 @@
                   "type": "boolean",
                   "default": true
                 },
+                "julia.completionmode": {
+                  "markdownDescription": "Sets the mode for completions.",
+                  "type": "string",
+                  "default": "import",
+                  "enum": ["exportedonly", "import", "qualify"],
+                  "markdownEnumDescriptions": [
+                    "Show completions for the current namespace.",
+                    "Show completions for the current namespace and unexported variables of `using`ed modules. Selection of an unexported variable will result in the automatic insertion of an explicit `using` statement.",
+                    "Show completions for the current namespace and unexported variables of `using`ed modules. Selection of an unexported variable will complete to a qualified variable name."
+                  ]
+                }
               },
               "additionalProperties": false
             }
