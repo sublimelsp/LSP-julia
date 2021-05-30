@@ -1,4 +1,5 @@
-| :information_source: This branch is only compatible with Sublime Text 4 *and requires a version >= Build 4095*. For the ST3 version please switch to the [st3 branch](https://github.com/sublimelsp/LSP-julia/tree/st3). | ---
+| :information_source: This branch is only compatible with Sublime Text 4 *and requires a version >= Build 4095*. For the ST3 version please switch to the [st3 branch](https://github.com/sublimelsp/LSP-julia/tree/st3).
+| ---
 
 # LSP-julia
 
@@ -14,7 +15,7 @@ A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime
 * Install the [LSP](https://packagecontrol.io/packages/LSP) package from Package Control.
 * (For now) clone this repository into your Packages directory of Sublime Text and checkout the `main` branch (or manually copy the file from this branch).
   Ensure that the folder is named `LSP-julia`.
-  When a Julia time is opened the first time after installing this package, it will automatically install a compatible version of the language server via the Julia package manager.
+  When a Julia file is opened for the first time after installing this package, a compatible version of the language server will automatically be installed via the Julia package manager.
 * Optionally install the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a simple Julia REPL integration and some functionality to run code in that REPL panel (see below).
 
 ## Features
