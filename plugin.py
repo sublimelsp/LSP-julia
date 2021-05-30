@@ -13,7 +13,7 @@ import subprocess
 
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
-STATUS_BAR_KEY = "lsp_julia"
+STATUS_BAR_KEY = "lsp_julia_environment"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
