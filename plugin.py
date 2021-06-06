@@ -99,7 +99,7 @@ class JuliaLanguageServer(AbstractPlugin):
             if workspace_folders:
                 env_path = find_julia_environment(workspace_folders[0].path)
                 env_name = os.path.basename(env_path) if env_path else JuliaLanguageServer.default_julia_environment()
-                session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))  # TODO does not work
+                session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
             else:
                 # TODO: get the Julia project environment from the initiating view if there are no workspace folders
                 session.set_window_status_async(STATUS_BAR_KEY, "Julia env: ???")
@@ -154,11 +154,11 @@ class JuliaLanguageServer(AbstractPlugin):
         os.makedirs(serverdir, exist_ok=True)
         for file in ["Project.toml", "Manifest.toml"]:
             ResourcePath.from_file_path(os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(serverdir, file))  # type: ignore
+        # TODO Use serverdir as DEPOT_PATH
         returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", "--project=\"{}\"".format(serverdir), "--eval", "\"import Pkg; Pkg.instantiate()\""])
         if returncode == 0:
             # create a dummy file to indicate that the installation was successful
             open(os.path.join(serverdir, "ready"), 'a').close()
-            sublime.active_window().status_message("The Julia Language Server has successfully been installed")
         else:
             error_msg = "An error occured while trying to install the Language Server. Check the console for possible error messages or consider to open an issue in the LSP-julia issue tracker on GitHub."
             sublime.error_message(error_msg)
@@ -174,8 +174,6 @@ class JuliaLanguageServer(AbstractPlugin):
         if file_path:
             # otherwise use folder of initiating view
             return os.path.dirname(file_path)
-        # if neither workspace folder exists nor initiating view is a saved file,
-        # then runserver() will fall back to the default Julia environment
         return None
 
 
