@@ -291,8 +291,7 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
     def on_result(self, params: Any) -> None:
         a = point_to_offset(Point.from_lsp(params[0]), self.view)
         b = point_to_offset(Point.from_lsp(params[1]), self.view)
-        self.view.sel().clear()
-        self.view.run_command("lsp_selection_add", {"regions": [(a, b)]})
+        self.view.run_command("lsp_selection_set", {"regions": [(a, b)]})
 
 
 class JuliaRunCodeBlockCommand(LspTextCommand):
@@ -337,8 +336,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         b = point_to_offset(Point.from_lsp(params[1]), self.view)
         c = point_to_offset(Point.from_lsp(params[2]), self.view)
         code_block = self.view.substr(sublime.Region(a, b))
-        self.view.sel().clear()
-        self.view.run_command("lsp_selection_add", {"regions": [(c, c)]})  # move cursor to next code block
+        self.view.run_command("lsp_selection_set", {"regions": [(c, c)]})  # move cursor to next code block
         self.view.show_at_center(c)
         send_julia_repl(self.view.window(), code_block)  # type: ignore
 
@@ -395,7 +393,7 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
                 next_cell += 1
             c = self.view.text_point(next_cell, 0)
             self.view.sel().clear()
-            self.view.run_command("lsp_selection_add", {"regions": [(c, c)]})  # TODO: find out why this was required or replace with simpler solution
+            self.view.sel().add(sublime.Region(c, c))
             self.view.show_at_center(c)
         else:
             code_block = self.view.substr(sel)
