@@ -2,7 +2,7 @@ from LSP.plugin import AbstractPlugin, ClientConfig, Notification, Request, Work
 from LSP.plugin.execute_command import LspExecuteCommand
 from LSP.plugin.core.protocol import Point
 from LSP.plugin.core.registry import LspTextCommand
-from LSP.plugin.core.typing import Any, Dict, List, Optional
+from LSP.plugin.core.typing import Any, Dict, List, Optional, Union
 from LSP.plugin.core.views import text_document_position_params, point_to_offset
 from sublime_lib import ResourcePath
 import importlib
@@ -194,20 +194,20 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
 
     session_name = "julia"
 
-    def run(self, edit: sublime.Edit, env_path):
+    def run(self, edit: sublime.Edit, env_path: str) -> None:
         if env_path == "__select_folder_dialog":
-            sublime.select_folder_dialog(self.on_select_folder)
+            sublime.select_folder_dialog(self.on_select_folder, multi_select=False)  # type: ignore
         else:
             self.activate_environment(env_path)
 
-    def on_select_folder(self, folder_path):
+    def on_select_folder(self, folder_path: Optional[str]) -> None:
         if folder_path:
             if is_julia_environment(folder_path):
                 self.activate_environment(folder_path)
             else:
                 sublime.active_window().status_message("The selected folder is not a valid Julia environment")
 
-    def activate_environment(self, env_path):
+    def activate_environment(self, env_path: str) -> None:
         session = self.session_by_name(self.session_name)
         if not session:
             return
@@ -216,7 +216,7 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
             env_name = os.path.basename(env_path)
             session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
 
-    def input(self, args):
+    def input(self, args: dict) -> Optional[sublime_plugin.ListInputHandler]:
         if "env_path" not in args:
             session = self.session_by_name(self.session_name)
             workspace_folders = session.get_workspace_folders()
@@ -228,10 +228,10 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     Used by JuliaActivateEnvironmentCommand to display the available Julia project environments the user can choose from.
     """
 
-    def __init__(self, workspace_folders):
+    def __init__(self, workspace_folders: List[WorkspaceFolder]) -> None:
         self.workspace_folders = workspace_folders
 
-    def list_items(self):
+    def list_items(self) -> List[sublime.ListInputItem]:
         # add default Julia environments from .julia/environments
         julia_env_home = os.path.expanduser(os.path.join("~", ".julia", "environments"))
         names = [env for env in os.listdir(julia_env_home) if os.path.isdir(os.path.join(julia_env_home, env))]  # collect all folder names in .julia/environments
@@ -245,16 +245,16 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         items.insert(0, sublime.ListInputItem("(pick a folder…)", "__select_folder_dialog"))
         return items
 
-    def placeholder(self):
+    def placeholder(self) -> str:
         return "Select Julia project/environment folder"
 
-    def preview(self, value):
+    def preview(self, value: Optional[str]) -> Union[sublime.Html, str, None]:
         if value == "__select_folder_dialog":
             return "Open a folder picker dialog to select a Julia project"
         else:
             return sublime.Html("<i>{}</i>".format(value)) if value else None
 
-    def validate(self, value):
+    def validate(self, value) -> bool:
         return value is not None
 
 
