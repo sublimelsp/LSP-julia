@@ -3,7 +3,7 @@ from LSP.plugin.execute_command import LspExecuteCommand
 from LSP.plugin.core.protocol import Point
 from LSP.plugin.core.registry import LspTextCommand
 from LSP.plugin.core.typing import Any, Dict, List, Optional, Union
-from LSP.plugin.core.views import text_document_position_params, point_to_offset
+from LSP.plugin.core.views import text_document_position_params, point_to_offset, uri_from_view
 from sublime_lib import ResourcePath
 import importlib
 import os
@@ -97,6 +97,7 @@ class JuliaLanguageServer(AbstractPlugin):
             session = self.weaksession()
             workspace_folders = session.get_workspace_folders()
             if workspace_folders:
+                # TODO: this will return a wrong folder if the initiating view is not in the first workspace folder
                 env_path = find_julia_environment(workspace_folders[0].path)
                 env_name = os.path.basename(env_path) if env_path else JuliaLanguageServer.default_julia_environment()
                 session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
@@ -165,15 +166,21 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def on_pre_start(cls, window: sublime.Window, initiating_view: sublime.View, workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
-        # set the working directory of the language server to the first workspace folder, because the server uses its
-        # working directory to find the Julia project environment if not explicitly given in the starting arguments
-        if workspace_folders:
-            # use first workspace folder if exists
-            return workspace_folders[0].path
+        # The working directory is used by the language server to find the Julia project environment, if not explicitly
+        # given as a parameter of runserver() or as a command line argument. We can make use of this to avoid adjusting
+        # the "command" setting everytime with a new environment argument when the server starts.
+        # If one or more folders are opened in Sublime Text, and one of it contains the initiating view, that folder is
+        # used as the working directory. This avoids to accidentally use a nested environment, e.g. if the initiating
+        # view is a file from a `docs` or `test` subdirectory.
+        # Otherwise we search through parent directories of the initiating view for a Julia environment. If no
+        # environment is found, the language server will fall back to the default Julia environment.
+        view_uri = uri_from_view(initiating_view)
+        for folder in workspace_folders:
+            if folder.includes_uri(view_uri):
+                return folder.path
         file_path = initiating_view.file_name()
         if file_path:
-            # otherwise use folder of initiating view
-            return os.path.dirname(file_path)
+            return find_julia_environment(os.path.dirname(file_path))
         return None
 
 
