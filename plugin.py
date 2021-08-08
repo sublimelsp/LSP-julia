@@ -133,7 +133,7 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def server_version(cls) -> str:
-        return "b575676"  # LanguageServer v4.0.1-DEV
+        return "aa8287a"  # LanguageServer v4.1.1-DEV
 
     @classmethod
     def needs_update_or_installation(cls) -> bool:
