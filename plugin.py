@@ -95,15 +95,9 @@ class JuliaLanguageServer(AbstractPlugin):
         super().__init__(weaksession)
         if sublime.load_settings(SETTINGS_FILE).get("show_environment_status"):
             session = self.weaksession()
-            workspace_folders = session.get_workspace_folders()
-            if workspace_folders:
-                # TODO: this will return a wrong folder if the initiating view is not in the first workspace folder
-                env_path = find_julia_environment(workspace_folders[0].path)
-                env_name = os.path.basename(env_path) if env_path else JuliaLanguageServer.default_julia_environment()
+            if session:
+                env_name = os.path.basename(session.working_directory) if session.working_directory else JuliaLanguageServer.default_julia_environment()
                 session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
-            else:
-                # TODO: get the Julia project environment from the initiating view if there are no workspace folders
-                session.set_window_status_async(STATUS_BAR_KEY, "Julia env: ???")
 
     @classmethod
     def name(cls) -> str:
