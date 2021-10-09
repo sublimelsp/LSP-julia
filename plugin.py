@@ -64,9 +64,12 @@ def versioned_text_document_position_params(view: sublime.View, location: int) -
 
     @see https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
     """
-    params = text_document_position_params(view, location)
-    params["version"] = view.change_count()
-    return params
+    position_params = text_document_position_params(view, location)
+    return {
+        "textDocument": position_params["textDocument"],
+        "position": position_params["position"],
+        "version": view.change_count()
+    }
 
 
 def is_julia_environment(folder_path: str) -> bool:
