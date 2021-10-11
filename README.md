@@ -12,12 +12,9 @@ A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime
 * [Julia](https://julialang.org/) (version 1.0 or above) must be installed on your machine.
   If the `julia` executable is not in your PATH, you need to provide the full path to the executable in the LSP-julia package settings.
 * The [Julia](https://packagecontrol.io/packages/Julia) package from Package Control should be installed for syntax highlighting and allows the language server to start for Julia source files.
-* Install the [LSP](https://packagecontrol.io/packages/LSP) package from Package Control.
-* (For now) clone this repository into your Packages directory of Sublime Text and checkout the `main` branch (or manually copy the file from this branch).
-  Ensure that the folder is named `LSP-julia`.
-  When a Julia file is opened for the first time after installing this package, a compatible version of the language server will automatically be installed via the Julia package manager.
-* Run *Package Control: Satisfy Dependencies* from the command palette.
-* Optionally install the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a simple Julia REPL integration and some functionality to run code in that REPL panel (see below).
+* Install the [LSP](https://packagecontrol.io/packages/LSP) package and *LSP-julia* from Package Control.
+  When a Julia file is opened for the first time after installing this package, the language server will automatically be installed via the Julia package manager (this can take 1-2 minutes).
+* Optionally install the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a simple Julia REPL integration and some functionality to run code (see below).
 
 ## Features
 
