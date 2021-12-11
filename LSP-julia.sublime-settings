@@ -17,18 +17,6 @@
 
     // @see https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/requests/workspace.jl
     "settings": {
-        "julia.format.calls": true,       // Format function calls.
-        "julia.format.comments": true,    // Format comments.
-        "julia.format.curly": true,       // Format braces.
-        "julia.format.docs": true,        // Format inline documentation.
-        "julia.format.indent": 4,         // Indent size for formatting.
-        "julia.format.indents": true,     // Format file indents.
-        "julia.format.iterOps": true,     // Format loop iterators.
-        "julia.format.keywords": true,    // Ensure single spacing following keywords.
-        "julia.format.kwarg": "none",     // Format whitespace around function keyword arguments. Valid values: "none", "single", "off"
-        "julia.format.lineends": true,    // [undocumented]
-        "julia.format.ops": true,         // Format whitespace around operators.
-        "julia.format.tuples": true,      // Format tuples.
         "julia.lint.call": true,          // This compares call signatures against all known methods for the called function. Calls with too many or too few arguments, or unknown keyword parameters are highlighted.
         "julia.lint.constif": true,       // Check for constant conditionals in if statements that result in branches never being reached.
         "julia.lint.datadecl": true,      // Check variables used in type declarations are datatypes.
