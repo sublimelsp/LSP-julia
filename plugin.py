@@ -153,7 +153,7 @@ class JuliaLanguageServer(AbstractPlugin):
         for file in ["Project.toml", "Manifest.toml"]:
             ResourcePath.from_file_path(os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(serverdir, file))  # type: ignore
         # TODO Use serverdir as DEPOT_PATH
-        returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", "--project=\"{}\"".format(serverdir), "--eval", "\"import Pkg; Pkg.instantiate()\""])
+        returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", "--project={}".format(serverdir), "--eval", "import Pkg; Pkg.instantiate()"])
         if returncode == 0:
             # create a dummy file to indicate that the installation was successful
             open(os.path.join(serverdir, "ready"), 'a').close()
