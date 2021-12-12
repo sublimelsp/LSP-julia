@@ -15,7 +15,8 @@
     "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer, SymbolServer; runserver()"],
     "selector": "source.julia",
 
-    // @see https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/requests/workspace.jl
+    // Formatting options must be configured through a .JuliaFormatter.toml file, see
+    // https://domluna.github.io/JuliaFormatter.jl/stable/config/
     "settings": {
         "julia.lint.call": true,          // This compares call signatures against all known methods for the called function. Calls with too many or too few arguments, or unknown keyword parameters are highlighted.
         "julia.lint.constif": true,       // Check for constant conditionals in if statements that result in branches never being reached.
