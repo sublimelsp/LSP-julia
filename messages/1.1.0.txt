@@ -1,0 +1,14 @@
+Version 1.1.0 (2021-12-12)
+--------------------------
+
+  * The language server will be updated to the latest version when you open a
+    Julia file the next time. There was a bug which prevented the installation
+    of the language server to work before, but it should be fixed now. If the
+    automatic update doesn't work, or the language server can't start, please
+    open an issue at GitHub: https://github.com/sublimelsp/LSP-julia/issues
+
+  * The language server now uses the JuliaFormatter.jl package for formatting
+    ("LSP: Format File" & "LSP: Format Selection" commands). The former settings
+    to configure formatting have been removed and formatting options must be
+    configured via a .JuliaFormatter.toml file now. For documentation see
+    https://domluna.github.io/JuliaFormatter.jl/stable/config/
