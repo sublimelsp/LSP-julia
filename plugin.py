@@ -19,8 +19,14 @@ JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
+# there isn't a native way of doing this, as far as i know.
+def find_output_view(window: sublime.Window, name: str):
+    for view in window.views():
+        if view.name() == name:
+            return view
+    return None
 
-def start_julia_repl(window: sublime.Window, focus: bool) -> None:
+def start_julia_repl(window: sublime.Window, focus: bool, panel: bool) -> None:
     """
     Start Julia REPL in panel via Terminus package.
     """
@@ -30,19 +36,19 @@ def start_julia_repl(window: sublime.Window, focus: bool) -> None:
     window.run_command("terminus_open", {
         "cmd": cmd,
         "cwd": "${file_path:${folder}}",
-        "panel_name": JULIA_REPL_NAME,
+        "title": panel and "" or JULIA_REPL_NAME,
+        "panel_name": panel and JULIA_REPL_NAME or "",
         "focus": focus,
         "tag": JULIA_REPL_TAG,
-        "env": settings.get("repl_env_variables")
+        "env": settings.get("repl_env_variables"),
     })
-
 
 def ensure_julia_repl(window: sublime.Window) -> bool:
     """
     Start Julia REPL in panel via Terminus package if not already running.
     """
-    if not window.find_output_panel(JULIA_REPL_NAME):
-        start_julia_repl(window, False)
+    if not window.find_output_panel(JULIA_REPL_NAME) and not find_output_view(window, JULIA_REPL_NAME):
+        start_julia_repl(window, False, False)
         return False
     return True
 
@@ -51,12 +57,12 @@ def send_julia_repl(window: sublime.Window, code_block: str) -> None:
     """
     Send a code block string to Julia REPL via Terminus package.
     """
-
+    edit_view = window.active_view() 
     # ensure code block ends with newline to enforce execution in REPL
     if not code_block.endswith("\n"):
         code_block += "\n"
     window.run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
-
+    window.focus_view(edit_view) #returns the focus to the currently edited view that is sending code.
 
 def versioned_text_document_position_params(view: sublime.View, location: int) -> Dict[str, Any]:
     """
@@ -262,7 +268,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         return value is not None
 
 
-class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
+class JuliaOpenReplPanelCommand(sublime_plugin.WindowCommand):
     """
     Start a Julia REPL via the Terminus package, or focus panel if already started.
     """
@@ -276,7 +282,22 @@ class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
             self.window.run_command("show_panel", {"panel": "output.{}".format(JULIA_REPL_NAME)})
             self.window.focus_view(repl_view)
         else:
-            start_julia_repl(self.window, True)
+            start_julia_repl(self.window, True, True)
+            
+class JuliaOpenReplTabCommand(sublime_plugin.WindowCommand):
+    """
+    Start a Julia REPL via the Terminus package, or focus tab if already started.
+    """
+
+    def is_enabled(self) -> bool:
+        return importlib.find_loader("Terminus") is not None
+
+    def run(self) -> None:
+        repl_view = find_output_view(self.window, JULIA_REPL_NAME)
+        if repl_view:
+            self.window.focus_view(repl_view)
+        else:
+            start_julia_repl(self.window, True, False)
 
 
 class JuliaSelectCodeBlockCommand(LspTextCommand):
