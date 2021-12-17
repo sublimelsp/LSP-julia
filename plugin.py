@@ -48,7 +48,7 @@ def ensure_julia_repl(window: sublime.Window) -> bool:
     Start Julia REPL in panel via Terminus package if not already running.
     """
     if not window.find_output_panel(JULIA_REPL_NAME) and not find_output_view(window, JULIA_REPL_NAME):
-        start_julia_repl(window, False, False)
+        start_julia_repl(window, False, True)
         return False
     return True
 
