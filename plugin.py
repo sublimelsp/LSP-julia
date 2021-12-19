@@ -37,7 +37,7 @@ def start_julia_repl(window: sublime.Window, focus: bool, panel: bool) -> None:
         "cmd": cmd,
         "cwd": "${file_path:${folder}}",
         "title": JULIA_REPL_NAME,
-        "panel_name": panel and JULIA_REPL_NAME or None,
+        "panel_name": JULIA_REPL_NAME if panel else None,
         "focus": focus,
         "tag": JULIA_REPL_TAG,
         "env": settings.get("repl_env_variables"),
