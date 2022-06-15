@@ -247,7 +247,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     def list_items(self) -> List[sublime.ListInputItem]:
         # add default Julia environments from .julia/environments
         julia_env_home = os.path.expanduser(os.path.join("~", ".julia", "environments"))
-        names = [env for env in os.listdir(julia_env_home) if os.path.isdir(os.path.join(julia_env_home, env))]  # collect all folder names in .julia/environments
+        names = [env for env in reversed(os.listdir(julia_env_home)) if os.path.isdir(os.path.join(julia_env_home, env))]  # collect all folder names in .julia/environments
         paths = [os.path.join(julia_env_home, env) for env in names]  # the corresponding folder paths
         items = [sublime.ListInputItem(name, path, kind=(sublime.KIND_ID_COLOR_YELLOWISH, "d", "default environment")) for name, path in zip(names, paths)]
         # add workspace folders on top of the list if they are valid Julia project environments
