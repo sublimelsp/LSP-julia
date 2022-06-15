@@ -20,7 +20,14 @@ JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
 
-def start_julia_repl(window: sublime.Window, focus: bool) -> None:
+def find_output_view(window: sublime.Window, name: str) -> Optional[sublime.View]:
+    for view in window.views():
+        if view.name() == name:
+            return view
+    return None
+
+
+def start_julia_repl(window: sublime.Window, focus: bool, panel: bool) -> None:
     """
     Start Julia REPL in panel via Terminus package.
     """
@@ -30,10 +37,12 @@ def start_julia_repl(window: sublime.Window, focus: bool) -> None:
     window.run_command("terminus_open", {
         "cmd": cmd,
         "cwd": "${file_path:${folder}}",
+        "title": JULIA_REPL_NAME,
         "panel_name": JULIA_REPL_NAME,
+        "show_in_panel": panel,
         "focus": focus,
         "tag": JULIA_REPL_TAG,
-        "env": settings.get("repl_env_variables")
+        "env": settings.get("repl_env_variables"),
     })
 
 
@@ -41,8 +50,8 @@ def ensure_julia_repl(window: sublime.Window) -> bool:
     """
     Start Julia REPL in panel via Terminus package if not already running.
     """
-    if not window.find_output_panel(JULIA_REPL_NAME):
-        start_julia_repl(window, False)
+    if not window.find_output_panel(JULIA_REPL_NAME) and not find_output_view(window, JULIA_REPL_NAME):
+        start_julia_repl(window, False, True)
         return False
     return True
 
@@ -270,13 +279,17 @@ class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
     def is_enabled(self) -> bool:
         return importlib.find_loader("Terminus") is not None
 
-    def run(self) -> None:
-        repl_view = self.window.find_output_panel(JULIA_REPL_NAME)
+    def run(self, panel: bool = True) -> None:
+        repl_view = find_output_view(self.window, JULIA_REPL_NAME)
+        repl_panel = self.window.find_output_panel(JULIA_REPL_NAME)
+
         if repl_view:
-            self.window.run_command("show_panel", {"panel": "output.{}".format(JULIA_REPL_NAME)})
             self.window.focus_view(repl_view)
+        elif repl_panel:
+            self.window.run_command("show_panel", {"panel": "output.{}".format(JULIA_REPL_NAME)})
+            self.window.focus_view(repl_panel)
         else:
-            start_julia_repl(self.window, True)
+            start_julia_repl(self.window, True, panel)
 
 
 class JuliaSelectCodeBlockCommand(LspTextCommand):

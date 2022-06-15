@@ -12,8 +12,14 @@
         "command": "julia_activate_environment"
     },
     {
-        "caption": "LSP-julia: Open Julia REPL",
-        "command": "julia_open_repl"
+        "caption": "LSP-julia: Open Julia REPL in Panel",
+        "command": "julia_open_repl",
+        "args": {"panel": true}
+    },
+    {
+        "caption": "LSP-julia: Open Julia REPL in Tab",
+        "command": "julia_open_repl",
+        "args": {"panel": false}
     },
     {
         "caption": "LSP-julia: Select Code Block",
