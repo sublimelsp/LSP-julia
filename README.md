@@ -1,6 +1,3 @@
-| :information_source: This branch is only compatible with Sublime Text 4 and requires a *version ≥ Build 4095*. For the ST3 version please switch to the [st3 branch](https://github.com/sublimelsp/LSP-julia/tree/st3).
-| ---
-
 # LSP-julia
 
 [![License](https://img.shields.io/github/license/sublimelsp/LSP-julia)](https://github.com/sublimelsp/LSP-julia/blob/master/LICENSE)
@@ -25,8 +22,9 @@ LSP-julia provides additional commands which are available from the command pale
 
 | Command label | Key binding | Description |
 | ------------- | ----------- | ----------- |
-| LSP-julia: Change Current Environment | none | Choose the Julia project environment you are working in. The packages from this environment are used by the language server to provide autocomplete suggestions and for diagnostics/linting. Dependent on the number of packages, it might take a while for the server to do a package indexing process in the background, after switching to a different environment. |
-| LSP-julia: Open Julia REPL<sup>1</sup> | none | Open a Julia REPL, started in the directory of the active file, or focus if already running. |
+| LSP-julia: Change Current Environment | none | Select the Julia project environment you are working in. The packages from this environment are used by the language server to provide autocomplete suggestions and for diagnostics/linting. Dependent on the number of packages, it might take a while for the server to do a package indexing process in the background, after switching to a different environment. |
+| LSP-julia: Open Julia REPL in Panel<sup>1</sup> | none | Open a Julia REPL, started in the directory of the active file, or focus if already running. |
+| LSP-julia: Open Julia REPL in Tab<sup>1</sup> | none | Same as above, just use a normal tab instead of the bottom panel for the REPL. |
 | LSP-julia: Select Code Block | none | Select the function or code block at the current cursor position. For multiple active cursors, only the topmost cursor position is taken into account. |
 | LSP-julia: Run Code Block<sup>1</sup> | <kbd>Alt</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code block containing the current cursor position and move curser to the next block. |
 | LSP-julia: Run Code Cell<sup>1</sup> | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code cell containing the current cursor position and move curser to the next cell. Code cells are signalized with a specially formatted comment at the start of a line: `##`, `#%%` or `# %%`. |
