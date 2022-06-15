@@ -34,6 +34,6 @@
         "julia.lint.run": true,           // Run the linter on active files.
         "julia.lint.typeparam": true,     // Check parameters declared in `where` statements or datatype declarations are used.
         "julia.lint.useoffuncargs": true, // Check that all declared arguments are used within the function body.
-        "julia.completionmode": "import", // Sets the mode for completions. Valid values: "exportedonly", "import", "qualify"
+        "julia.completionmode": "qualify" // Sets the mode for completions. Valid values: "exportedonly", "import", "qualify"
     }
 }

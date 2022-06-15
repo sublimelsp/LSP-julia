@@ -43,66 +43,6 @@
               "type": "object",
               // @see https://github.com/julia-vscode/julia-vscode/blob/master/package.json
               "properties": {
-                "julia.format.calls": {
-                  "markdownDescription": "Format function calls.",
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.comments": {
-                  "markdownDescription": "Format comments.",
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.curly": {
-                  "markdownDescription": "Format braces.",
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.docs": {
-                  "markdownDescription": "Format inline documentation.",
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.indent": {
-                  "markdownDescription": "Indent size for formatting.",
-                  "type": "integer",
-                  "default": 4
-                },
-                "julia.format.indents": {
-                  "markdownDescription": "Format file indents.",
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.iterOps": {
-                  "markdownDescription": "Format loop iterators.",
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.keywords": {
-                  "markdownDescription": "Ensure single spacing following keywords.",
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.kwarg": {
-                  "markdownDescription": "Format whitespace around function keyword arguments.",
-                  "type": "string",
-                  "default": "none",
-                  "enum": ["none", "single", "off"]
-                },
-                "julia.format.lineends": {
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.ops": {
-                  "markdownDescription": "Format whitespace around operators.",
-                  "type": "boolean",
-                  "default": true
-                },
-                "julia.format.tuples": {
-                  "markdownDescription": "Format tuples.",
-                  "type": "boolean",
-                  "default": true
-                },
                 "julia.lint.call": {
                   "markdownDescription": "This compares call signatures against all known methods for the called function. Calls with too many or too few arguments, or unknown keyword parameters are highlighted.",
                   "type": "boolean",
@@ -139,7 +79,7 @@
                 "julia.lint.missingrefs": {
                   "markdownDescription": "Highlight unknown symbols. The `symbols` option will not mark unknown fields.",
                   "type": "string",
-                  "default": "all",
+                  "default": "none",
                   "enum": ["none", "symbols", "all"]
                 },
                 "julia.lint.modname": {
@@ -175,7 +115,7 @@
                 "julia.completionmode": {
                   "markdownDescription": "Sets the mode for completions.",
                   "type": "string",
-                  "default": "import",
+                  "default": "qualify",
                   "enum": ["exportedonly", "import", "qualify"],
                   "markdownEnumDescriptions": [
                     "Show completions for the current namespace.",
