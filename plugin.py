@@ -160,7 +160,7 @@ class JuliaLanguageServer(AbstractPlugin):
         serverdir = os.path.join(cls.basedir(), cls.server_version())
         os.makedirs(serverdir, exist_ok=True)
         for file in ["Project.toml", "Manifest.toml"]:
-            ResourcePath.from_file_path(os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(serverdir, file))  # type: ignore
+            ResourcePath.from_file_path(os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(serverdir, file))
         # TODO Use serverdir as DEPOT_PATH
         returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", "--project={}".format(serverdir), "--eval", "ENV[\"JULIA_SSL_CA_ROOTS_PATH\"] = \"\"; import Pkg; Pkg.instantiate()"])
         if returncode == 0:
@@ -209,7 +209,7 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
 
     def run(self, edit: sublime.Edit, env_path: str) -> None:
         if env_path == "__select_folder_dialog":
-            sublime.select_folder_dialog(self.on_select_folder, multi_select=False)  # type: ignore
+            sublime.select_folder_dialog(self.on_select_folder, multi_select=False)  # pyright: ignore  # compatible types for self.on_select_folder are ensured due to multi_select=False
         else:
             self.activate_environment(env_path)
 
@@ -231,8 +231,7 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
 
     def input(self, args: dict) -> Optional[sublime_plugin.ListInputHandler]:
         if "env_path" not in args:
-            session = self.session_by_name(self.session_name)
-            workspace_folders = session.get_workspace_folders()
+            workspace_folders = self.session_by_name(self.session_name).get_workspace_folders()  # pyright: ignore [reportOptionalMemberAccess]
             return EnvPathInputHandler(workspace_folders)
 
 
@@ -302,8 +301,7 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
 
     def run(self, edit: sublime.Edit) -> None:
         params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
-        session = self.session_by_name(self.session_name)
-        session.send_request(Request("julia/getCurrentBlockRange", params), self.on_result)
+        self.session_by_name(self.session_name).send_request(Request("julia/getCurrentBlockRange", params), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
 
     def on_result(self, params: Any) -> None:
         a = point_to_offset(Point.from_lsp(params[0]), self.view)
@@ -333,29 +331,33 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
 
     def run(self, edit: sublime.Edit) -> None:
         window = self.view.window()
+        if not window:
+            return
         # ensure that Terminus output panel for Julia REPL is available
-        repl_ready = ensure_julia_repl(window)  # type: ignore # view.window() can in theory return None if the tab was closed in the meantime, but thats probably irrelevant here
+        repl_ready = ensure_julia_repl(window)
         sel = self.view.sel()[0]
         if sel.empty():
             params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
-            session = self.session_by_name(self.session_name)
-            session.send_request(Request("julia/getCurrentBlockRange", params), self.on_result)
+            self.session_by_name(self.session_name).send_request(Request("julia/getCurrentBlockRange", params), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
         else:
             code_block = self.view.substr(sel)
             if repl_ready:
-                send_julia_repl(window, code_block)  # type: ignore
+                send_julia_repl(window, code_block)
             else:
                 # give Terminus a bit time to initialize, otherwise the terminus_send_string command doesn't work
-                sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)  # type: ignore
+                sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)
 
     def on_result(self, params: Any) -> None:
+        window = self.view.window()
+        if not window:
+            return
         a = point_to_offset(Point.from_lsp(params[0]), self.view)
         b = point_to_offset(Point.from_lsp(params[1]), self.view)
         c = point_to_offset(Point.from_lsp(params[2]), self.view)
         code_block = self.view.substr(sublime.Region(a, b))
         self.view.run_command("lsp_selection_set", {"regions": [(c, c)]})  # move cursor to next code block
         self.view.show_at_center(c)
-        send_julia_repl(self.view.window(), code_block)  # type: ignore
+        send_julia_repl(window, code_block)
 
 
 class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
@@ -378,8 +380,10 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
 
     def run(self, edit: sublime.Edit) -> None:
         window = self.view.window()
+        if not window:
+            return
         sel = self.view.sel()[0]
-        repl_ready = ensure_julia_repl(window)  # type: ignore
+        repl_ready = ensure_julia_repl(window)
         if sel.empty():
             line_count = self.view.rowcol(self.view.size())[0]
             # get start and end line of code cell
@@ -415,9 +419,9 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
         else:
             code_block = self.view.substr(sel)
         if repl_ready:
-            send_julia_repl(window, code_block)  # type: ignore
+            send_julia_repl(window, code_block)
         else:
-            sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)  # type: ignore
+            sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)
 
 
 class JuliaExecuteCommand(LspExecuteCommand):
