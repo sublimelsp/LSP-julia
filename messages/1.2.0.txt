@@ -1,0 +1,13 @@
+Version 1.2.0 (2022-06-22)
+--------------------------
+
+  * Added a new command "LSP-julia: Open Julia REPL in Tab" in the command palette to use
+    a normal tab instead of the bottom panel for the REPL (requires the Terminus package).
+
+  * The default value for the "julia.completionmode" setting changed from "import" to "qualify".
+    (All settings use the default values from VS Code).
+    With the value "qualified", selection of an unexported variable from another module in the
+    autocompletion popup will complete to a qualified variable name, instead of the automatic
+    insertion of an explicit `using` statement.
+
+  * Updated the language server to the latest version.
