@@ -136,7 +136,13 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def julia_version(cls) -> str:
-        return subprocess.check_output([cls.julia_exe(), "--version"]).decode("utf-8").rstrip().split()[-1]
+        if sublime.platform() == "windows":
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 11
+            return subprocess.check_output([cls.julia_exe(), "--version"], startupinfo=startupinfo).decode("utf-8").rstrip().split()[-1]
+        else:
+            return subprocess.check_output([cls.julia_exe(), "--version"]).decode("utf-8").rstrip().split()[-1]
 
     @classmethod
     def default_julia_environment(cls) -> str:
