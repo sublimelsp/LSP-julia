@@ -1,12 +1,23 @@
-from LSP.plugin import AbstractPlugin, ClientConfig, Notification, Request, WorkspaceFolder, register_plugin, unregister_plugin
+from LSP.plugin import AbstractPlugin
+from LSP.plugin import ClientConfig
+from LSP.plugin import Notification
+from LSP.plugin import Request
+from LSP.plugin import WorkspaceFolder
+from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.execute_command import LspExecuteCommand
+from LSP.plugin.core.css import css as lsp_css
 from LSP.plugin.core.protocol import Point
 from LSP.plugin.core.registry import LspTextCommand
+from LSP.plugin.core.sessions import Session
 from LSP.plugin.core.typing import Any, Dict, List, Optional, Union
-from LSP.plugin.core.views import text_document_position_params, point_to_offset, uri_from_view
+from LSP.plugin.core.views import point_to_offset
+from LSP.plugin.core.views import text_document_position_params
+from LSP.plugin.core.views import uri_from_view
 from sublime_lib import ResourcePath
 import importlib
+import mdpopups
 import os
+import re
 import shutil
 import sublime
 import sublime_plugin
@@ -14,10 +25,14 @@ import subprocess
 
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
+SESSION_NAME = "julia"
 STATUS_BAR_KEY = "lsp_julia_environment"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
+
+julia_session = None  # type: Optional[Session]  # TODO this is a bad hack and probably causes bugs
+julia_documentation_sheet_id = None  # type: Optional[int]
 
 
 def find_output_view(window: sublime.Window, name: str) -> Optional[sublime.View]:
@@ -113,7 +128,7 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def name(cls) -> str:
-        return "julia"
+        return SESSION_NAME
 
     @classmethod
     def additional_variables(cls) -> Optional[Dict[str, str]]:
@@ -211,7 +226,7 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
     autocomplete suggestions and diagnostics.
     """
 
-    session_name = "julia"
+    session_name = SESSION_NAME
 
     def run(self, edit: sublime.Edit, env_path: str) -> None:
         if env_path == "__select_folder_dialog":
@@ -303,7 +318,7 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
     Maybe not very useful on its own, but rather when combined with running the code in the Julia REPL.
     """
 
-    session_name = "julia"
+    session_name = SESSION_NAME
 
     def run(self, edit: sublime.Edit) -> None:
         params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
@@ -321,7 +336,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
     containing the current cursor position from the language server and execute it in the Julia REPL.
     """
 
-    session_name = "julia"
+    session_name = SESSION_NAME
 
     def is_enabled(self) -> bool:
         # language server must be ready
@@ -430,5 +445,151 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
             sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)
 
 
+class JuliaSearchDocumentationCommand(sublime_plugin.WindowCommand):
+    """
+    Can be invoked to search the Julia documentation.
+    """
+
+    def is_enabled(self) -> bool:
+        global julia_session
+        return julia_session is not None
+
+    def run(self, word: str) -> None:
+        global julia_session
+
+        if julia_session:
+            params = {"word": word}
+            julia_session.send_request(Request("julia/getDocFromWord", params), self.on_result)
+
+    def on_result(self, response: str) -> None:
+        # There is no way to find a certain HtmlSheet, other than by storing its id.
+        # See https://github.com/sublimehq/sublime_text/issues/3826
+        # We will store the id globally, which unfortunately means that this approach
+        # won't work correctly if there are multiple LSP-julia sessions at the same time.
+        global julia_documentation_sheet_id
+
+        active_view = self.window.active_view()
+        selected_sheets = self.window.selected_sheets()
+        new_sheet = False
+        for sheet in self.window.sheets():
+            if isinstance(sheet, sublime.HtmlSheet) and sheet.id() == julia_documentation_sheet_id:
+                break
+        else:
+            sheet = self.window.new_html_sheet("Julia Documentation", "")
+            # sheet = self.window.new_html_sheet("Julia Documentation", "", flags=sublime.ADD_TO_SELECTION)
+            julia_documentation_sheet_id = sheet.id()
+            new_sheet = True
+
+        frontmatter = mdpopups.format_frontmatter({
+            "allow_code_wrap": True,
+            "language_map": {
+                "jldoctest": (("julia", "jldoctest"), ("Julia/Julia",))
+            },
+            "markdown_extensions": [
+                "markdown.extensions.admonition",
+                {
+                    "pymdownx.escapeall": {
+                        "hardbreak": True,
+                        "nbsp": False
+                    }
+                },
+                {
+                    "pymdownx.magiclink": {
+                        "hide_protocol": True,
+                        "repo_url_shortener": True
+                    }
+                }
+            ]
+        })
+
+        # Workaround CommonMark deficiency: two spaces followed by a newline should result in a new paragraph.
+        content = re.sub("(\\S)  \n", "\\1\n\n", response)
+
+        # Replace Markdown links with `file:` URI with actual HTML links and `subl:open_file` command,
+        # because the `file:` protocol is not supported for links in minihtml and there is no way to utilize
+        # a callback function for links in a HtmlSheet
+        # The `encoded_position` argument for the open_file command was introduced in ST 4127
+        # https://github.com/sublimehq/sublime_text/issues/4800#issuecomment-1035906804
+        if int(sublime.version()) >= 4127:
+            content = re.sub(r"\[(.+?:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1", "encoded_position": true}'>\1</a>""", content)
+        else:
+            content = re.sub(r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1"}'>\1\2</a>""", content)
+        content = re.sub(r"\[(.+?)\]\(file:///.+?\)", r"""<a href='subl:open_file {"file": "\1"}'>\1</a>""", content)
+
+        # Replace [`title`](@ref) links with the corresponding command to navigate the documentation with a new search query
+        content = re.sub(r"\[`(.+?)`\]\(@ref\)", r"""<code><a href='subl:julia_search_documentation {"word": "\1"}'>\1</a></code>""", content)
+
+        css = lsp_css().popups + ".lsp-julia-documentation {margin: 0.5rem; font-family: system;}"
+        mdpopups.update_html_sheet(sheet, frontmatter + content, css=css, wrapper_class="lsp-julia-documentation")
+
+        # If there is no sheet for the Julia documentation yet, open it in side-by-side mode
+        if new_sheet:
+            # Workaround for https://github.com/sublimehq/sublime_text/issues/5488
+            if sheet not in selected_sheets:
+                selected_sheets.append(sheet)
+            self.window.select_sheets(selected_sheets)
+            if active_view:
+                self.window.focus_view(active_view)
+
+    def input(self, args: dict) -> Optional[sublime_plugin.TextInputHandler]:
+        if "word" not in args:
+            return WordInputHandler()
+
+
+class WordInputHandler(sublime_plugin.TextInputHandler):
+    def placeholder(self) -> str:
+        return "Search docs"
+
+    def validate(self, text: str) -> bool:
+        return text != ""
+
+
+class JuliaShowDocumentationCommand(LspTextCommand):
+    """
+    Can be invoked to search the Julia documentation about the word at the current cursor position
+    or from the right-click context menu.
+    """
+
+    session_name = SESSION_NAME
+
+    def is_enabled(self, event: Optional[dict] = None, point: Optional[int] = None, word: Optional[str] = None) -> bool:
+        # Language server must be ready
+        if not super().is_enabled(event, point):
+            return False
+        # If a search query is provided we can ignore the cursor position
+        if word:
+            return True
+        # Cursor position or right click must be on a word
+        if event is not None and "x" in event and "y" in event:
+            pt = self.view.window_to_text((event["x"], event["y"]))
+        elif len(self.view.sel()) != 1:
+            return False
+        else:
+            pt = self.view.sel()[0].b
+        # The View.word() API isn't useful to decide whether a point is on a word, it may return
+        # strings filled with whitespace or punctuation symbols.
+        point_classification = self.view.classify(pt)
+        return point_classification == 512 or bool(point_classification & sublime.CLASS_WORD_START) or \
+               bool(point_classification & sublime.CLASS_WORD_END)
+
+    def is_visible(self, event: Optional[dict] = None, point: Optional[int] = None, word: Optional[str] = None) -> bool:
+        return self.is_enabled(event, point, word)
+
+    def run(self, edit: sublime.Edit, event: Optional[dict] = None, point: Optional[int] = None, word: Optional[str] = None) -> None:
+        global julia_session
+
+        if not word:
+            if event is not None and "x" in event and "y" in event:
+                pt = self.view.window_to_text((event["x"], event["y"]))
+            else:
+                pt = self.view.sel()[0].b
+            # we already know that the point is really on a word due to self.is_enabled
+            word = self.view.substr(self.view.word(pt))
+        window = self.view.window()
+        if window:
+            julia_session = self.session_by_name(self.session_name)  # store language server session, so it can be used in WindowCommand
+            window.run_command("julia_search_documentation", {"word": word})
+
+
 class JuliaExecuteCommand(LspExecuteCommand):
-    session_name = "julia"
+    session_name = SESSION_NAME

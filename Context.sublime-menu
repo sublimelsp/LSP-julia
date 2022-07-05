@@ -1,0 +1,6 @@
+[
+    {
+        "caption": "Show Documentation",
+        "command": "julia_show_documentation"
+    }
+]

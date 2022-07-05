@@ -6,12 +6,12 @@ A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime
 
 ## Requirements & Installation
 
-* [Julia](https://julialang.org/) (version 1.0 or above) must be installed on your machine.
+* [Julia](https://julialang.org/) must be installed on your machine.
   If the `julia` executable is not in your PATH, you need to provide the full path to the executable in the LSP-julia package settings.
-* The [Julia](https://packagecontrol.io/packages/Julia) package from Package Control should be installed for syntax highlighting and allows the language server to start for Julia source files.
-* Install the [LSP](https://packagecontrol.io/packages/LSP) package and *LSP-julia* from Package Control.
+* The [Julia package](https://packagecontrol.io/packages/Julia) from Package Control should be installed for syntax highlighting and allows the language server to start for Julia source files.
+* Install the [LSP package](https://packagecontrol.io/packages/LSP) and *LSP-julia* from Package Control.
   When a Julia file is opened for the first time after installing this package, the language server will automatically be installed via the Julia package manager (this can take 1-2 minutes).
-* Optionally install the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a simple Julia REPL integration and some functionality to run code (see below).
+* Optionally install the [Terminus package](https://packagecontrol.io/packages/Terminus) from Package Control for a simple Julia REPL integration and some functionality to run code (see below).
 
 ## Features
 
@@ -23,6 +23,7 @@ LSP-julia provides additional commands which are available from the command pale
 | Command label | Key binding | Description |
 | ------------- | ----------- | ----------- |
 | LSP-julia: Change Current Environment | none | Select the Julia project environment you are working in. The packages from this environment are used by the language server to provide autocomplete suggestions and for diagnostics/linting. Dependent on the number of packages, it might take a while for the server to do a package indexing process in the background, after switching to a different environment. |
+| LSP-julia: Search Documentation | none | Search the Julia documentation and open the results in a tab. You can also right-click on a word in a Julia file and select "Show Documentation" from the context menu to open the corresponding docs. Note that due to current limitations, this command is only available in the command palette *after* the documentation has been opened at least one time from the context menu. |
 | LSP-julia: Open Julia REPL in Panel<sup>1</sup> | none | Open a Julia REPL, started in the directory of the active file, or focus if already running. |
 | LSP-julia: Open Julia REPL in Tab<sup>1</sup> | none | Same as above, just use a normal tab instead of the bottom panel for the REPL. |
 | LSP-julia: Select Code Block | none | Select the function or code block at the current cursor position. For multiple active cursors, only the topmost cursor position is taken into account. |

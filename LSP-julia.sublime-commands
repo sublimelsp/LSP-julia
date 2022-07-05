@@ -12,6 +12,10 @@
         "command": "julia_activate_environment"
     },
     {
+        "caption": "LSP-julia: Search Documentation",
+        "command": "julia_search_documentation"
+    },
+    {
         "caption": "LSP-julia: Open Julia REPL in Panel",
         "command": "julia_open_repl",
         "args": {"panel": true}

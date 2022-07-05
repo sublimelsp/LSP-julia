@@ -1,6 +1,7 @@
 {
     "*": {
         "*": [
+            "mdpopups",
             "sublime_lib"
         ]
     }
