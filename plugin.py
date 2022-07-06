@@ -1,14 +1,14 @@
 from LSP.plugin import AbstractPlugin
 from LSP.plugin import ClientConfig
+from LSP.plugin import css as lsp_css
+from LSP.plugin import LspTextCommand
+from LSP.plugin import LspWindowCommand
 from LSP.plugin import Notification
 from LSP.plugin import Request
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.execute_command import LspExecuteCommand
-from LSP.plugin.core.css import css as lsp_css
 from LSP.plugin.core.protocol import Point
-from LSP.plugin.core.registry import LspTextCommand
-from LSP.plugin.core.sessions import Session
 from LSP.plugin.core.typing import Any, Dict, List, Optional, Union
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import text_document_position_params
@@ -31,7 +31,6 @@ JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
-julia_session = None  # type: Optional[Session]  # TODO this is a bad hack and probably causes bugs
 julia_documentation_sheet_id = None  # type: Optional[int]
 
 
@@ -338,9 +337,9 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
 
     session_name = SESSION_NAME
 
-    def is_enabled(self) -> bool:
-        # language server must be ready
-        if not bool(self.session_by_name(self.session_name)):
+    def is_enabled(self, event: Optional[dict] = None, point: Optional[int] = None) -> bool:
+        # Language server must be ready
+        if not super().is_enabled(event, point):
             return False
         # Terminus package must be installed
         if not importlib.find_loader("Terminus"):
@@ -350,7 +349,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
             return False
         return True
 
-    def run(self, edit: sublime.Edit) -> None:
+    def run(self, edit: sublime.Edit, event: Optional[dict] = None, point: Optional[int] = None) -> None:
         window = self.view.window()
         if not window:
             return
@@ -445,21 +444,15 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
             sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)
 
 
-class JuliaSearchDocumentationCommand(sublime_plugin.WindowCommand):
+class JuliaSearchDocumentationCommand(LspWindowCommand):
     """
     Can be invoked to search the Julia documentation.
     """
 
-    def is_enabled(self) -> bool:
-        global julia_session
-        return julia_session is not None
+    session_name = SESSION_NAME
 
     def run(self, word: str) -> None:
-        global julia_session
-
-        if julia_session:
-            params = {"word": word}
-            julia_session.send_request(Request("julia/getDocFromWord", params), self.on_result)
+        self.session().send_request(Request("julia/getDocFromWord", {"word": word}), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
 
     def on_result(self, response: str) -> None:
         # There is no way to find a certain HtmlSheet, other than by storing its id.
@@ -483,7 +476,7 @@ class JuliaSearchDocumentationCommand(sublime_plugin.WindowCommand):
         frontmatter = mdpopups.format_frontmatter({
             "allow_code_wrap": True,
             "language_map": {
-                "jldoctest": (("julia", "jldoctest"), ("Julia/Julia",))
+                "julia": (("julia", "jldoctest"), ("Julia/Julia",))
             },
             "markdown_extensions": [
                 "markdown.extensions.admonition",
@@ -525,10 +518,9 @@ class JuliaSearchDocumentationCommand(sublime_plugin.WindowCommand):
         # If there is no sheet for the Julia documentation yet, open it in side-by-side mode
         if new_sheet:
             # Workaround for https://github.com/sublimehq/sublime_text/issues/5488
-            if sheet not in selected_sheets:
-                selected_sheets.append(sheet)
+            selected_sheets.append(sheet)
             self.window.select_sheets(selected_sheets)
-            if active_view:
+            if active_view and active_view.is_valid():
                 self.window.focus_view(active_view)
 
     def input(self, args: dict) -> Optional[sublime_plugin.TextInputHandler]:
@@ -552,13 +544,10 @@ class JuliaShowDocumentationCommand(LspTextCommand):
 
     session_name = SESSION_NAME
 
-    def is_enabled(self, event: Optional[dict] = None, point: Optional[int] = None, word: Optional[str] = None) -> bool:
+    def is_enabled(self, event: Optional[dict] = None, point: Optional[int] = None) -> bool:
         # Language server must be ready
         if not super().is_enabled(event, point):
             return False
-        # If a search query is provided we can ignore the cursor position
-        if word:
-            return True
         # Cursor position or right click must be on a word
         if event is not None and "x" in event and "y" in event:
             pt = self.view.window_to_text((event["x"], event["y"]))
@@ -572,22 +561,18 @@ class JuliaShowDocumentationCommand(LspTextCommand):
         return point_classification == 512 or bool(point_classification & sublime.CLASS_WORD_START) or \
                bool(point_classification & sublime.CLASS_WORD_END)
 
-    def is_visible(self, event: Optional[dict] = None, point: Optional[int] = None, word: Optional[str] = None) -> bool:
-        return self.is_enabled(event, point, word)
+    def is_visible(self, event: Optional[dict] = None, point: Optional[int] = None) -> bool:
+        return self.is_enabled(event, point)
 
-    def run(self, edit: sublime.Edit, event: Optional[dict] = None, point: Optional[int] = None, word: Optional[str] = None) -> None:
-        global julia_session
-
-        if not word:
-            if event is not None and "x" in event and "y" in event:
-                pt = self.view.window_to_text((event["x"], event["y"]))
-            else:
-                pt = self.view.sel()[0].b
-            # we already know that the point is really on a word due to self.is_enabled
-            word = self.view.substr(self.view.word(pt))
+    def run(self, edit: sublime.Edit, event: Optional[dict] = None, point: Optional[int] = None) -> None:
+        if event is not None and "x" in event and "y" in event:
+            pt = self.view.window_to_text((event["x"], event["y"]))
+        else:
+            pt = self.view.sel()[0].b
+        # we already know that the point is really on a word due to self.is_enabled
+        word = self.view.substr(self.view.word(pt))
         window = self.view.window()
         if window:
-            julia_session = self.session_by_name(self.session_name)  # store language server session, so it can be used in WindowCommand
             window.run_command("julia_search_documentation", {"word": word})
 
 
