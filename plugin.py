@@ -1,6 +1,6 @@
 from LSP.plugin import AbstractPlugin
 from LSP.plugin import ClientConfig
-from LSP.plugin import css as lsp_css
+from LSP.plugin import css
 from LSP.plugin import LspTextCommand
 from LSP.plugin import LspWindowCommand
 from LSP.plugin import Notification
@@ -12,6 +12,7 @@ from LSP.plugin.core.typing import Any, Dict, List, Optional, Union
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import text_document_position_params
 from LSP.plugin.core.views import uri_from_view
+from collections import deque
 from sublime_lib import ResourcePath
 import importlib
 import mdpopups
@@ -29,8 +30,6 @@ STATUS_BAR_KEY = "lsp_julia_environment"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
-
-julia_documentation_sheet_id = None  # type: Optional[int]
 
 
 def find_output_view(window: sublime.Window, name: str) -> Optional[sublime.View]:
@@ -450,27 +449,53 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
     session_name = SESSION_NAME
 
+    _sheet_id = None  # type: Optional[int]
+
+    _last_words = deque(maxlen=100)
+    _next_words = deque()
+    _current_word = None  # type: Optional[str]
+
     def run(self, word: str) -> None:
+        if word == "__back":
+            try:
+                word = self._last_words.pop()
+                self._next_words.append(self._current_word)
+                self._current_word = word
+            except IndexError:
+                return
+        elif word == "__forward":
+            try:
+                word = self._next_words.pop()
+                self._last_words.append(self._current_word)
+                self._current_word = word
+            except IndexError:
+                return
+        else:
+            if self._current_word:
+                self._last_words.append(self._current_word)
+            self._current_word = word
+            self._next_words.clear()
+
         self.session().send_request(Request("julia/getDocFromWord", {"word": word}), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
 
     def on_result(self, response: str) -> None:
         # There is no way to find a certain HtmlSheet, other than by storing its id.
         # See https://github.com/sublimehq/sublime_text/issues/3826
-        # We will store the id globally, which unfortunately means that this approach
-        # won't work correctly if there are multiple LSP-julia sessions at the same time.
-        global julia_documentation_sheet_id
-
-        active_view = self.window.active_view()
-        selected_sheets = self.window.selected_sheets()
-        new_sheet = False
         for sheet in self.window.sheets():
-            if isinstance(sheet, sublime.HtmlSheet) and sheet.id() == julia_documentation_sheet_id:
+            if isinstance(sheet, sublime.HtmlSheet) and sheet.id() == self._sheet_id:
                 break
         else:
+            active_view = self.window.active_view()
+            selected_sheets = self.window.selected_sheets()
+            # If there is not yet a sheet for the Julia documentation, open it in side-by-side mode
             sheet = self.window.new_html_sheet("Julia Documentation", "")
             # sheet = self.window.new_html_sheet("Julia Documentation", "", flags=sublime.ADD_TO_SELECTION)
-            julia_documentation_sheet_id = sheet.id()
-            new_sheet = True
+            self._sheet_id = sheet.id()
+            # Workaround for https://github.com/sublimehq/sublime_text/issues/5488
+            selected_sheets.append(sheet)
+            self.window.select_sheets(selected_sheets)
+            if active_view and active_view.is_valid():
+                self.window.focus_view(active_view)
 
         frontmatter = mdpopups.format_frontmatter({
             "allow_code_wrap": True,
@@ -479,6 +504,8 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             },
             "markdown_extensions": [
                 "markdown.extensions.admonition",
+                "markdown.extensions.attr_list",
+                "markdown.extensions.nl2br",
                 {
                     "pymdownx.escapeall": {
                         "hardbreak": True,
@@ -494,33 +521,37 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             ]
         })
 
-        # Workaround CommonMark deficiency: two spaces followed by a newline should result in a new paragraph.
-        content = re.sub("(\\S)  \n", "\\1\n\n", response)
+        # Add navigation toolbar with "Back", "Forward" and "Search" links
+        toolbar_links = []  # type: List[str]
+        toolbar_links.append("""<a title='Go back one page' href='subl:julia_search_documentation {"word": "__back"}'>Back</a>""" if len(self._last_words) else "Back")
+        toolbar_links.append("""<a title='Go forward one page' href='subl:julia_search_documentation {"word": "__forward"}'>Forward</a>""" if len(self._next_words) else "Forward")
+        toolbar_links.append("""<a href='subl:julia_search_documentation'>Search</a>""")
+        toolbar = "<div class='toolbar'>" + " | ".join(toolbar_links) + "</div><hr>\n"
 
-        # Replace Markdown links with `file:` URI with actual HTML links and `subl:open_file` command,
-        # because the `file:` protocol is not supported for links in minihtml and there is no way to utilize
-        # a callback function for links in a HtmlSheet
-        # The `encoded_position` argument for the open_file command was introduced in ST 4127
-        # https://github.com/sublimehq/sublime_text/issues/4800#issuecomment-1035906804
+        # Workaround CommonMark deficiency: two spaces followed by a newline should result in a new paragraph
+        markdown_content = re.sub("(\\S)  \n", "\\1\n\n", response)
+
+        # Add another newline before horizontal lines
+        markdown_content = re.sub("\n---", "\n\n---", markdown_content)
+
+        # Add another newline before list items
+        markdown_content = re.sub("\n- ", "\n\n- ", markdown_content)
+
+        # Replace Markdown links with `file:` URI with actual HTML links and `subl:open_file` command, because the
+        # `file:` protocol is not supported for links in minihtml and there is no way to utilize a callback function for
+        # links in a HtmlSheet
         if int(sublime.version()) >= 4127:
-            content = re.sub(r"\[(.+?:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1", "encoded_position": true}'>\1</a>""", content)
+            # The `encoded_position` argument for the open_file command was introduced in ST 4127 - https://github.com/sublimehq/sublime_text/issues/4800
+            markdown_content = re.sub(r"\[(.+?:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1", "encoded_position": true}'>\1</a>""", markdown_content)
         else:
-            content = re.sub(r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1"}'>\1\2</a>""", content)
-        content = re.sub(r"\[(.+?)\]\(file:///.+?\)", r"""<a href='subl:open_file {"file": "\1"}'>\1</a>""", content)
+            markdown_content = re.sub(r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1"}'>\1\2</a>""", markdown_content)
 
         # Replace [`title`](@ref) links with the corresponding command to navigate the documentation with a new search query
-        content = re.sub(r"\[`(.+?)`\]\(@ref\)", r"""<code><a href='subl:julia_search_documentation {"word": "\1"}'>\1</a></code>""", content)
+        markdown_content = re.sub(r"\[`(.+?)`\]\(@ref.*?\)", r"""<a href='subl:julia_search_documentation {"word": "\1"}'>`\1`</a>""", markdown_content)
 
-        css = lsp_css().popups + ".lsp-julia-documentation {margin: 0.5rem; font-family: system;}"
-        mdpopups.update_html_sheet(sheet, frontmatter + content, css=css, wrapper_class="lsp-julia-documentation")
+        content = frontmatter + toolbar + markdown_content
 
-        # If there is no sheet for the Julia documentation yet, open it in side-by-side mode
-        if new_sheet:
-            # Workaround for https://github.com/sublimehq/sublime_text/issues/5488
-            selected_sheets.append(sheet)
-            self.window.select_sheets(selected_sheets)
-            if active_view and active_view.is_valid():
-                self.window.focus_view(active_view)
+        mdpopups.update_html_sheet(sheet, content, css=css().sheets, wrapper_class="lsp_sheet")
 
     def input(self, args: dict) -> Optional[sublime_plugin.TextInputHandler]:
         if "word" not in args:
