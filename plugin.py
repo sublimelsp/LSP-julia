@@ -7,7 +7,6 @@ from LSP.plugin import Notification
 from LSP.plugin import Request
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
-from LSP.plugin.execute_command import LspExecuteCommand
 from LSP.plugin.core.protocol import Point
 from LSP.plugin.core.typing import Any, Dict, List, Optional, Union
 from LSP.plugin.core.views import point_to_offset
@@ -574,7 +573,3 @@ class JuliaShowDocumentationCommand(LspTextCommand):
         window = self.view.window()
         if window:
             window.run_command("julia_search_documentation", {"word": word})
-
-
-class JuliaExecuteCommand(LspExecuteCommand):
-    session_name = SESSION_NAME
