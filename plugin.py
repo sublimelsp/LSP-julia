@@ -131,12 +131,16 @@ class JuliaLanguageServer(AbstractPlugin):
     def additional_variables(cls) -> Optional[Dict[str, str]]:
         variables = dict()
         variables["julia_exe"] = cls.julia_exe()
-        variables["server_path"] = os.path.join(cls.basedir(), cls.server_version())
+        variables["server_path"] = cls.basedir()
         return variables
 
     @classmethod
     def basedir(cls) -> str:
         return os.path.join(cls.storage_path(), "LSP-julia")
+
+    @classmethod
+    def version_file(cls) -> str:
+        return os.path.join(cls.basedir(), "VERSION")
 
     @classmethod
     def packagedir(cls) -> str:
@@ -170,23 +174,31 @@ class JuliaLanguageServer(AbstractPlugin):
         if not shutil.which(cls.julia_exe()):
             msg = "The executable \"{}\" could not be found. Set up the path to the Julia executable by running the command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.".format(cls.julia_exe())
             raise RuntimeError(msg)
-        return not os.path.isfile(os.path.join(cls.basedir(), cls.server_version(), "ready"))
+        try:
+            with open(cls.version_file(), "r") as fp:
+                return cls.server_version() != fp.read().strip()
+        except OSError:
+            return True
 
     @classmethod
     def install_or_update(cls) -> None:
         shutil.rmtree(cls.basedir(), ignore_errors=True)
         serverdir = os.path.join(cls.basedir(), cls.server_version())
-        os.makedirs(serverdir, exist_ok=True)
-        for file in ["Project.toml", "Manifest.toml"]:
-            ResourcePath.from_file_path(os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(serverdir, file))
-        # TODO Use serverdir as DEPOT_PATH
-        returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", "--project={}".format(serverdir), "--eval", "ENV[\"JULIA_SSL_CA_ROOTS_PATH\"] = \"\"; import Pkg; Pkg.instantiate()"])
-        if returncode == 0:
-            # create a dummy file to indicate that the installation was successful
-            open(os.path.join(serverdir, "ready"), 'a').close()
-        else:
-            error_msg = "An error occured while trying to install the Language Server. Check the console for possible error messages or consider to open an issue in the LSP-julia issue tracker on GitHub."
-            sublime.error_message(error_msg)
+        try:
+            os.makedirs(cls.basedir(), exist_ok=True)
+            for file in ["Project.toml", "Manifest.toml"]:
+                ResourcePath.from_file_path(os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.basedir(), file))
+            # TODO Use cls.basedir() as DEPOT_PATH for language server
+            returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", "--project={}".format(cls.basedir()), "--eval", "ENV[\"JULIA_SSL_CA_ROOTS_PATH\"] = \"\"; import Pkg; Pkg.instantiate()"])
+            if returncode == 0:
+                with open(cls.version_file(), "w") as fp:
+                    fp.write(cls.server_version())
+            else:
+                error_msg = "An error occured while trying to install the Language Server. Check the console for possible error messages or consider to open an issue in the LSP-julia issue tracker on GitHub."
+                sublime.error_message(error_msg)
+        except Exception:
+            shutil.rmtree(cls.basedir(), ignore_errors=True)
+            raise
 
     @classmethod
     def on_pre_start(cls, window: sublime.Window, initiating_view: sublime.View, workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
