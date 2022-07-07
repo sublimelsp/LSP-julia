@@ -572,7 +572,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
 class WordInputHandler(sublime_plugin.TextInputHandler):
     def placeholder(self) -> str:
-        return "Search docs"
+        return "Search Julia docs"
 
     def validate(self, text: str) -> bool:
         return text != ""

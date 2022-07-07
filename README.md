@@ -23,7 +23,7 @@ LSP-julia provides additional commands which are available from the command pale
 | Command label | Key binding | Description |
 | ------------- | ----------- | ----------- |
 | LSP-julia: Change Current Environment | none | Select the Julia project environment you are working in. The packages from this environment are used by the language server to provide autocomplete suggestions and for diagnostics/linting. Dependent on the number of packages, it might take a while for the server to do a package indexing process in the background, after switching to a different environment. |
-| LSP-julia: Search Documentation | none | Search the Julia documentation and open the results in a tab. You can also right-click on a word in a Julia file and select "Show Documentation" from the context menu to open the corresponding docs. |
+| LSP-julia: Documentation | none | Search the Julia documentation and open the results in a tab. You can also right-click on a word in a Julia file and select "Show Documentation" from the context menu to open the corresponding documentation page. |
 | LSP-julia: Open Julia REPL in Panel<sup>1</sup> | none | Open a Julia REPL, started in the directory of the active file, or focus if already running. |
 | LSP-julia: Open Julia REPL in Tab<sup>1</sup> | none | Same as above, just use a normal tab instead of the bottom panel for the REPL. |
 | LSP-julia: Select Code Block | none | Select the function or code block at the current cursor position. For multiple active cursors, only the topmost cursor position is taken into account. |
