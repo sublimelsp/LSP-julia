@@ -1,5 +1,18 @@
 [
   {
+    "id": "goto",
+    "children": [
+      {
+        "id": "lsp",
+        "caption": "-"
+      },
+      {
+        "caption": "LSP: Show Documentation",
+        "command": "julia_show_documentation"
+      }
+    ]
+  },
+  {
     "id": "preferences",
     "children": [
       {
