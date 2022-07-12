@@ -4,7 +4,26 @@
       {
         "file_patterns": ["/LSP-julia.sublime-settings"],
         "schema": {
+          "$id": "sublime://settings/LSP-julia",
           "properties": {
+            "command": {
+              "$ref": "sublime://settings/LSP#/definitions/ClientCommand"
+            },
+            "enabled": {
+              "$ref": "sublime://settings/LSP#/definitions/ClientEnabled"
+            },
+            "selector": {
+              "$ref": "sublime://settings/LSP#/definitions/ClientSelector"
+            },
+            "schemes": {
+              "$ref": "sublime://settings/LSP#/definitions/ClientSchemes"
+            },
+            "initializationOptions": {
+              "$ref": "sublime://settings/LSP#/definitions/ClientInitializationOptions"
+            },
+            "disabled_capabilities": {
+              "$ref": "sublime://settings/LSP#/definitions/ClientDisabledCapabilities"
+            },
             "julia_executable_path": {
               "description": "Full path to the Julia executable (including the file itself).",
               "type": "string",
@@ -25,18 +44,6 @@
               "description": "Show name of the active Julia environment in the status bar.",
               "type": "boolean",
               "default": true
-            },
-            "command": {
-              "markdownDescription": "Command to run the Julia language server.\n\n*This should not be edited!*",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "selector": {
-              "description": "Scope selector that specifies the documents to which the language server should be attached.",
-              "type": "string",
-              "default": "source.julia"
             },
             "settings": {
               "description": "Language server configurations.",
@@ -122,12 +129,53 @@
                     "Show completions for the current namespace and unexported variables of `using`ed modules. Selection of an unexported variable will result in the automatic insertion of an explicit `using` statement.",
                     "Show completions for the current namespace and unexported variables of `using`ed modules. Selection of an unexported variable will complete to a qualified variable name."
                   ]
-                }
+                },
+                "julia.format.calls": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.comments": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.curly": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.docs": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.indent": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.indents": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.iterOps": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.keywords": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.kwarg": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.lineends": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.ops": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
+                "julia.format.tuples": {
+                  "$ref": "#/$defs/format_deprecated"
+                },
               },
               "additionalProperties": false
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "$defs": {
+            "format_deprecated": {
+              "deprecationMessage": "This setting will be ignored. Please use a .JuliaFormatter.toml file instead."
+            }
+          }
         }
       }
     ]
