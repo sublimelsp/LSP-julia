@@ -5,6 +5,7 @@ from LSP.plugin import LspTextCommand
 from LSP.plugin import LspWindowCommand
 from LSP.plugin import Notification
 from LSP.plugin import Request
+from LSP.plugin import Response
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.core.protocol import Point
@@ -113,6 +114,26 @@ def find_julia_environment(folder_path: str) -> Optional[str]:
     return None
 
 
+def prepare_markdown(content: str) -> str:
+    """
+    This function applies a few modifications to the Markdown content used in hover popups and the documentation sheet,
+    in order to workaround some parsing inconsistencies in mdpopups' Markdown-to-minihtml converter and to enable links
+    with references to a documentation page.
+    """
+
+    # Workaround CommonMark deficiency: two spaces followed by a newline should result in a new paragraph
+    content = re.sub("(\\S)  \n", "\\1\n\n", content)
+    # Add another newline before horizontal rule
+    content = re.sub("\n---", "\n\n---", content)
+    # Add another newline before list items
+    content = re.sub("\n- ", "\n\n- ", content)
+    # Replace [`title`](@ref) links with the corresponding command to navigate the documentation with a new search query
+    content = re.sub(r"\[`(.+?)`\]\(@ref.*?\)", r"""<a href='subl:julia_search_documentation {"word": "\1"}'>`\1`</a>""", content)
+    # Remove parameters after fenced code block language identifier
+    content = re.sub("```jldoctest;.*?\n", "```jldoctest\n", content)
+    return content
+
+
 class JuliaLanguageServer(AbstractPlugin):
 
     def __init__(self, weaksession) -> None:
@@ -218,6 +239,11 @@ class JuliaLanguageServer(AbstractPlugin):
         if file_path:
             return find_julia_environment(os.path.dirname(file_path))
         return None
+
+    def on_server_response(self, method: str, response: Response) -> None:
+        if method == "textDocument/hover":
+            if response.result and isinstance(response.result["contents"], dict) and response.result["contents"].get("kind") == "markdown":  # pyright: ignore
+                response.result["contents"]["value"] = prepare_markdown(response.result["contents"]["value"])  # pyright: ignore
 
 
 def plugin_loaded() -> None:
@@ -512,7 +538,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         frontmatter = mdpopups.format_frontmatter({
             "allow_code_wrap": True,
             "language_map": {
-                "julia": (("julia", "jldoctest"), ("Julia/Julia",))
+                "julia": (("julia", "julia-repl", "jldoctest"), ("Julia/Julia",))
             },
             "markdown_extensions": [
                 "markdown.extensions.admonition",
@@ -540,14 +566,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         toolbar_links.append("""<a href='subl:julia_search_documentation'>Search</a>""")
         toolbar = "<div class='toolbar'>" + " | ".join(toolbar_links) + "</div><hr>\n"
 
-        # Workaround CommonMark deficiency: two spaces followed by a newline should result in a new paragraph
-        markdown_content = re.sub("(\\S)  \n", "\\1\n\n", response)
-
-        # Add another newline before horizontal lines
-        markdown_content = re.sub("\n---", "\n\n---", markdown_content)
-
-        # Add another newline before list items
-        markdown_content = re.sub("\n- ", "\n\n- ", markdown_content)
+        markdown_content = prepare_markdown(response)
 
         # Replace Markdown links with `file:` URI with actual HTML links and `subl:open_file` command, because the
         # `file:` protocol is not supported for links in minihtml and there is no way to utilize a callback function for
@@ -557,9 +576,6 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             markdown_content = re.sub(r"\[(.+?:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1", "encoded_position": true}'>\1</a>""", markdown_content)
         else:
             markdown_content = re.sub(r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1"}'>\1\2</a>""", markdown_content)
-
-        # Replace [`title`](@ref) links with the corresponding command to navigate the documentation with a new search query
-        markdown_content = re.sub(r"\[`(.+?)`\]\(@ref.*?\)", r"""<a href='subl:julia_search_documentation {"word": "\1"}'>`\1`</a>""", markdown_content)
 
         content = frontmatter + toolbar + markdown_content
 
