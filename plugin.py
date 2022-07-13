@@ -240,7 +240,7 @@ class JuliaLanguageServer(AbstractPlugin):
             return find_julia_environment(os.path.dirname(file_path))
         return None
 
-    def on_server_response(self, method: str, response: Response) -> None:
+    def on_server_response_async(self, method: str, response: Response) -> None:
         if method == "textDocument/hover":
             if response.result and isinstance(response.result["contents"], dict) and response.result["contents"].get("kind") == "markdown":  # pyright: ignore
                 response.result["contents"]["value"] = prepare_markdown(response.result["contents"]["value"])  # pyright: ignore
