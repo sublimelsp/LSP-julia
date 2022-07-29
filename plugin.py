@@ -254,7 +254,7 @@ def plugin_unloaded() -> None:
     unregister_plugin(JuliaLanguageServer)
 
 
-class JuliaActivateEnvironmentCommand(LspTextCommand):
+class JuliaActivateEnvironmentCommand(LspWindowCommand):
     """
     Can be invoked from the command palette to switch the active Julia project environment.
     The active Julia project environment detemines the Julia packages used by the language server to provide
@@ -263,7 +263,7 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
 
     session_name = SESSION_NAME
 
-    def run(self, edit: sublime.Edit, env_path: str) -> None:
+    def run(self, env_path: str) -> None:
         if env_path == "__select_folder_dialog":
             sublime.select_folder_dialog(self.on_select_folder, multi_select=False)  # pyright: ignore  # compatible types for self.on_select_folder are ensured due to multi_select=False
         else:
@@ -274,10 +274,10 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
             if is_julia_environment(folder_path):
                 self.activate_environment(folder_path)
             else:
-                sublime.active_window().status_message("The selected folder is not a valid Julia environment")
+                self.window.status_message("The selected folder is not a valid Julia environment")
 
     def activate_environment(self, env_path: str) -> None:
-        session = self.session_by_name(self.session_name)
+        session = self.session()
         if not session:
             return
         session.send_notification(Notification("julia/activateenvironment", {"envPath": env_path}))
@@ -287,8 +287,7 @@ class JuliaActivateEnvironmentCommand(LspTextCommand):
 
     def input(self, args: dict) -> Optional[sublime_plugin.ListInputHandler]:
         if "env_path" not in args:
-            workspace_folders = self.session_by_name(self.session_name).get_workspace_folders()  # pyright: ignore [reportOptionalMemberAccess]
-            return EnvPathInputHandler(workspace_folders)
+            return EnvPathInputHandler(self.session().get_workspace_folders())  # pyright: ignore [reportOptionalMemberAccess]
 
 
 class EnvPathInputHandler(sublime_plugin.ListInputHandler):
