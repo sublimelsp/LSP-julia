@@ -99,7 +99,8 @@ def is_julia_environment(folder_path: str) -> bool:
     Check whether a given folder path is a valid Julia project environment, i.e. it contains a file Project.toml
     or JuliaProject.toml.
     """
-    return os.path.isfile(os.path.join(folder_path, "Project.toml")) or os.path.isfile(os.path.join(folder_path, "JuliaProject.toml"))
+    return os.path.isfile(os.path.join(folder_path, "Project.toml")) or \
+        os.path.isfile(os.path.join(folder_path, "JuliaProject.toml"))
 
 
 def find_julia_environment(folder_path: str) -> Optional[str]:
@@ -128,7 +129,8 @@ def prepare_markdown(content: str) -> str:
     # Add another newline before list items
     content = re.sub("\n- ", "\n\n- ", content)
     # Replace [`title`](@ref) links with the corresponding command to navigate the documentation with a new search query
-    content = re.sub(r"\[`(.+?)`\]\(@ref.*?\)", r"""<a href='subl:julia_search_documentation {"word": "\1"}'>`\1`</a>""", content)
+    content = re.sub(
+        r"\[`(.+?)`\]\(@ref.*?\)", r"""<a href='subl:julia_search_documentation {"word": "\1"}'>`\1`</a>""", content)
     # Remove parameters after fenced code block language identifier
     content = re.sub("```jldoctest;.*?\n", "```jldoctest\n", content)
     return content
@@ -141,7 +143,8 @@ class JuliaLanguageServer(AbstractPlugin):
         if sublime.load_settings(SETTINGS_FILE).get("show_environment_status"):
             session = self.weaksession()
             if session:
-                env_name = os.path.basename(session.working_directory) if session.working_directory else JuliaLanguageServer.default_julia_environment()
+                env_name = os.path.basename(session.working_directory) if session.working_directory else \
+                    JuliaLanguageServer.default_julia_environment()
                 session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
 
     @classmethod
@@ -177,7 +180,8 @@ class JuliaLanguageServer(AbstractPlugin):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = 11
-            return subprocess.check_output([cls.julia_exe(), "--version"], startupinfo=startupinfo).decode("utf-8").rstrip().split()[-1]
+            return subprocess.check_output(
+                [cls.julia_exe(), "--version"], startupinfo=startupinfo).decode("utf-8").rstrip().split()[-1]
         else:
             return subprocess.check_output([cls.julia_exe(), "--version"]).decode("utf-8").rstrip().split()[-1]
 
@@ -204,13 +208,19 @@ class JuliaLanguageServer(AbstractPlugin):
     @classmethod
     def install_or_update(cls) -> None:
         shutil.rmtree(cls.basedir(), ignore_errors=True)
-        serverdir = os.path.join(cls.basedir(), cls.server_version())
         try:
             os.makedirs(cls.basedir(), exist_ok=True)
             for file in ["Project.toml", "Manifest.toml"]:
-                ResourcePath.from_file_path(os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.basedir(), file))
+                ResourcePath.from_file_path(
+                    os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.basedir(), file))
             # TODO Use cls.basedir() as DEPOT_PATH for language server
-            returncode = subprocess.call([cls.julia_exe(), "--startup-file=no", "--history-file=no", "--project={}".format(cls.basedir()), "--eval", "ENV[\"JULIA_SSL_CA_ROOTS_PATH\"] = \"\"; import Pkg; Pkg.instantiate()"])
+            returncode = subprocess.call([
+                cls.julia_exe(),
+                "--startup-file=no",
+                "--history-file=no",
+                "--project={}".format(cls.basedir()),
+                "--eval", "ENV[\"JULIA_SSL_CA_ROOTS_PATH\"] = \"\"; import Pkg; Pkg.instantiate()"
+            ])
             if returncode == 0:
                 with open(cls.version_file(), "w") as fp:
                     fp.write(cls.server_version())
@@ -222,7 +232,13 @@ class JuliaLanguageServer(AbstractPlugin):
             raise
 
     @classmethod
-    def on_pre_start(cls, window: sublime.Window, initiating_view: sublime.View, workspace_folders: List[WorkspaceFolder], configuration: ClientConfig) -> Optional[str]:
+    def on_pre_start(
+        cls,
+        window: sublime.Window,
+        initiating_view: sublime.View,
+        workspace_folders: List[WorkspaceFolder],
+        configuration: ClientConfig
+    ) -> Optional[str]:
         # The working directory is used by the language server to find the Julia project environment, if not explicitly
         # given as a parameter of runserver() or as a command line argument. We can make use of this to avoid adjusting
         # the "command" setting everytime with a new environment argument when the server starts.
@@ -295,6 +311,9 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     Used by JuliaActivateEnvironmentCommand to display the available Julia project environments the user can choose from.
     """
 
+    KIND_DEFAULT_ENVIRONMENT = (sublime.KIND_ID_COLOR_YELLOWISH, "d", "default environment")
+    KIND_WORKSPACE_FOLDER = (sublime.KIND_ID_COLOR_PURPLISH, "f", "workspace folder")
+
     def __init__(self, workspace_folders: List[WorkspaceFolder]) -> None:
         self.workspace_folders = workspace_folders
 
@@ -303,11 +322,11 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         julia_env_home = os.path.expanduser(os.path.join("~", ".julia", "environments"))
         names = [env for env in reversed(os.listdir(julia_env_home)) if os.path.isdir(os.path.join(julia_env_home, env))]  # collect all folder names in .julia/environments
         paths = [os.path.join(julia_env_home, env) for env in names]  # the corresponding folder paths
-        items = [sublime.ListInputItem(name, path, kind=(sublime.KIND_ID_COLOR_YELLOWISH, "d", "default environment")) for name, path in zip(names, paths)]
+        items = [sublime.ListInputItem(name, path, kind=self.KIND_DEFAULT_ENVIRONMENT) for name, path in zip(names, paths)]
         # add workspace folders on top of the list if they are valid Julia project environments
         for workspace_folder in reversed(self.workspace_folders):
             if workspace_folder.path not in paths and is_julia_environment(workspace_folder.path):
-                items.insert(0, sublime.ListInputItem(workspace_folder.name, workspace_folder.path, kind=(sublime.KIND_ID_COLOR_PURPLISH, "f", "workspace folder")))
+                items.insert(0, sublime.ListInputItem(workspace_folder.name, workspace_folder.path, kind=self.KIND_WORKSPACE_FOLDER))
         # add option for folder picker dialog
         items.insert(0, sublime.ListInputItem("(pick a folder…)", "__select_folder_dialog"))
         return items
@@ -571,10 +590,17 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         # `file:` protocol is not supported for links in minihtml and there is no way to utilize a callback function for
         # links in a HtmlSheet
         if int(sublime.version()) >= 4127:
-            # The `encoded_position` argument for the open_file command was introduced in ST 4127 - https://github.com/sublimehq/sublime_text/issues/4800
-            markdown_content = re.sub(r"\[(.+?:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1", "encoded_position": true}'>\1</a>""", markdown_content)
+            # The `encoded_position` argument for the open_file command was introduced in ST 4127
+            # https://github.com/sublimehq/sublime_text/issues/4800
+            markdown_content = re.sub(
+                r"\[(.+?:\d+)\]\(file:///.+?#\d+\)",
+                r"""<a href='subl:open_file {"file": "\1", "encoded_position": true}'>\1</a>""",
+                markdown_content)
         else:
-            markdown_content = re.sub(r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)", r"""<a href='subl:open_file {"file": "\1"}'>\1\2</a>""", markdown_content)
+            markdown_content = re.sub(
+                r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)",
+                r"""<a href='subl:open_file {"file": "\1"}'>\1\2</a>""",
+                markdown_content)
 
         content = frontmatter + toolbar + markdown_content
 
@@ -616,7 +642,7 @@ class JuliaShowDocumentationCommand(LspTextCommand):
         # strings filled with whitespace or punctuation symbols.
         point_classification = self.view.classify(pt)
         return point_classification == 512 or bool(point_classification & sublime.CLASS_WORD_START) or \
-               bool(point_classification & sublime.CLASS_WORD_END)
+            bool(point_classification & sublime.CLASS_WORD_END)
 
     def is_visible(self, event: Optional[dict] = None, point: Optional[int] = None) -> bool:
         return self.is_enabled(event, point)
