@@ -12,7 +12,7 @@
     "show_environment_status": true,
 
     // Language server configurations
-    "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer, SymbolServer; runserver()"],
+    "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer; runserver()"],
     "selector": "source.julia",
 
     // Formatting options must be configured through a .JuliaFormatter.toml file, see
