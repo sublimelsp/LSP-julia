@@ -1,0 +1,10 @@
+Version 1.3.0 (2022-08-07)
+--------------------------
+
+  * Added a new "Show Documentation" item in the context menu when you right-click on a word
+    in a Julia file. Now it is possible to use certain links from the hover popup to show the
+    corresponding page in the documentation tab. And there is also a new entry in the command
+    palette "LSP-julia: Documentation" to search for any page from the docs.
+    Please report bugs or possible enhancements under https://github.com/sublimelsp/LSP-julia/issues
+
+  * Updated the language server to the latest version (should hopefully reduce occasional crashing).
