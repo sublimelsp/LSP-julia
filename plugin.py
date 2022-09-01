@@ -535,14 +535,17 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         self.session().send_request(Request("julia/getDocFromWord", {"word": word}), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
 
     def on_result(self, response: str) -> None:
+        selected_sheets = self.window.selected_sheets()
         # There is no way to find a certain HtmlSheet, other than by storing its id.
         # See https://github.com/sublimehq/sublime_text/issues/3826
         for sheet in self.window.sheets():
             if isinstance(sheet, sublime.HtmlSheet) and sheet.id() == self._sheet_id:
+                if sheet not in selected_sheets:
+                    selected_sheets.append(sheet)
+                    self.window.select_sheets(selected_sheets)
                 break
         else:
             active_view = self.window.active_view()
-            selected_sheets = self.window.selected_sheets()
             # If there is not yet a sheet for the Julia documentation, open it in side-by-side mode
             sheet = self.window.new_html_sheet("Julia Documentation", "")
             # sheet = self.window.new_html_sheet("Julia Documentation", "", flags=sublime.ADD_TO_SELECTION)
