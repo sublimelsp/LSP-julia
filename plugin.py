@@ -32,6 +32,8 @@ JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
+SUBLIME_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
+
 
 def find_output_view(window: sublime.Window, name: str) -> Optional[sublime.View]:
     for view in window.views():
@@ -536,7 +538,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
     def on_result(self, response: str) -> None:
         selected_sheets = self.window.selected_sheets()
-        # There is no way to find a certain HtmlSheet, other than by storing its id.
+        # There is no way to find a particular HtmlSheet, other than by storing its id.
         # See https://github.com/sublimehq/sublime_text/issues/3826
         for sheet in self.window.sheets():
             if isinstance(sheet, sublime.HtmlSheet) and sheet.id() == self._sheet_id:
@@ -547,12 +549,14 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         else:
             active_view = self.window.active_view()
             # If there is not yet a sheet for the Julia documentation, open it in side-by-side mode
-            sheet = self.window.new_html_sheet("Julia Documentation", "")
-            # sheet = self.window.new_html_sheet("Julia Documentation", "", flags=sublime.ADD_TO_SELECTION)
+            if SUBLIME_VERSION >= 4135:
+                sheet = self.window.new_html_sheet("Julia Documentation", "", flags=sublime.ADD_TO_SELECTION)
+            else:
+                sheet = self.window.new_html_sheet("Julia Documentation", "")
+                # Workaround for https://github.com/sublimehq/sublime_text/issues/5488
+                selected_sheets.append(sheet)
+                self.window.select_sheets(selected_sheets)
             self._sheet_id = sheet.id()
-            # Workaround for https://github.com/sublimehq/sublime_text/issues/5488
-            selected_sheets.append(sheet)
-            self.window.select_sheets(selected_sheets)
             if active_view and active_view.is_valid():
                 self.window.focus_view(active_view)
 
@@ -592,7 +596,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         # Replace Markdown links with `file:` URI with actual HTML links and `subl:open_file` command, because the
         # `file:` protocol is not supported for links in minihtml and there is no way to utilize a callback function for
         # links in a HtmlSheet
-        if int(sublime.version()) >= 4127:
+        if SUBLIME_VERSION >= 4127:
             # The `encoded_position` argument for the open_file command was introduced in ST 4127
             # https://github.com/sublimehq/sublime_text/issues/4800
             markdown_content = re.sub(
