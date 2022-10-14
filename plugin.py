@@ -529,10 +529,14 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             except IndexError:
                 return
         else:
-            if self._current_word:
+            # Only update the word history if the new query is different from the last one. Otherwise it would be bad UX
+            # when you click on the "Back" or "Forward" buttons and nothing seems to happen. A new request to the server
+            # and content update of the HtmlSheet is still required, because the documentation sheet might have been
+            # closed in the meantime.
+            if self._current_word is not None and self._current_word != word:
                 self._last_words.append(self._current_word)
+                self._next_words.clear()
             self._current_word = word
-            self._next_words.clear()
 
         self.session().send_request(Request("julia/getDocFromWord", {"word": word}), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
 
