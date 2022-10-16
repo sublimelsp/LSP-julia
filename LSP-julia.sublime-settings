@@ -14,6 +14,9 @@
     // Language server configurations
     "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer; runserver()"],
     "selector": "source.julia",
+    "initializationOptions": {
+        "julialangTestItemIdentification": true
+    },
 
     // Formatting options must be configured through a .JuliaFormatter.toml file, see
     // https://domluna.github.io/JuliaFormatter.jl/stable/config/

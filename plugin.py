@@ -8,13 +8,17 @@ from LSP.plugin import Request
 from LSP.plugin import Response
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
-from LSP.plugin.core.protocol import Point
-from LSP.plugin.core.typing import Any, Dict, List, Optional, Union
+from LSP.plugin.core.protocol import Location, Point, Position, Range, TextDocumentIdentifier, URI
+from LSP.plugin.core.typing import Any, Dict, List, NotRequired, Optional, TypedDict, Union
+from LSP.plugin.core.url import parse_uri
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import text_document_position_params
 from LSP.plugin.core.views import uri_from_view
 from collections import deque
+from functools import partial
 from sublime_lib import ResourcePath
+from urllib.parse import parse_qs, urldefrag
+import html
 import importlib
 import mdpopups
 import os
@@ -23,6 +27,59 @@ import shutil
 import sublime
 import sublime_plugin
 import subprocess
+import time
+
+
+# https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
+VersionedTextDocumentPositionParams = TypedDict('VersionedTextDocumentPositionParams', {
+    'textDocument': TextDocumentIdentifier,
+    'version': int,
+    'position': Position
+})
+
+# https://github.com/julia-vscode/julia-vscode/blob/main/src/testing/testFeature.ts
+TestItemDetail = TypedDict('TestItemDetail', {
+    'id': str,
+    'label': str,
+    'range': Range,
+    'code': NotRequired[str],
+    'code_range': NotRequired[Range],
+    'option_default_imports': NotRequired[bool],
+    'option_tags': NotRequired[List[str]],
+    'error': NotRequired[str],
+    'state': NotRequired[str]  # custom property from LSP-julia to store the item state
+})
+
+PublishTestItemsParams = TypedDict('PublishTestItemsParams', {
+    'uri': URI,
+    'version': int,
+    'project_path': str,
+    'package_path': str,
+    'package_name': str,
+    'testitemdetails': List[TestItemDetail]
+})
+
+# https://github.com/julia-vscode/julia-vscode/blob/main/scripts/packages/VSCodeTestServer/src/testserver_protocol.jl
+TestserverRunTestitemRequestParams = TypedDict('TestserverRunTestitemRequestParams', {
+    'uri': str,
+    'name': str,
+    'packageName': str,
+    'useDefaultUsings': bool,
+    'line': int,
+    'column': int,
+    'code': str
+})
+
+TestMessage = TypedDict('TestMessage', {
+    'message': str,
+    'location': Optional[Location]
+})
+
+TestserverRunTestitemRequestParamsReturn = TypedDict('TestserverRunTestitemRequestParamsReturn', {
+    'status': str,
+    'message': Optional[List[TestMessage]],
+    'duration': Optional[float]
+})
 
 
 SETTINGS_FILE = "LSP-julia.sublime-settings"
@@ -82,11 +139,11 @@ def send_julia_repl(window: sublime.Window, code_block: str) -> None:
     window.run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
 
 
-def versioned_text_document_position_params(view: sublime.View, location: int) -> Dict[str, Any]:
+def versioned_text_document_position_params(view: sublime.View, location: int) -> VersionedTextDocumentPositionParams:
     """
     Custom Julia-specific extension to the LSP.
 
-    @see https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
+    https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
     """
     position_params = text_document_position_params(view, location)
     return {
@@ -138,7 +195,19 @@ def prepare_markdown(content: str) -> str:
     return content
 
 
+def startupinfo():
+    if sublime.platform() == "windows":
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 11
+        return startupinfo
+    return None
+
+
 class JuliaLanguageServer(AbstractPlugin):
+
+    testitems = {}  # type: Dict[URI, PublishTestItemsParams]
+    testitem_in_progress = False
 
     def __init__(self, weaksession) -> None:
         super().__init__(weaksession)
@@ -178,14 +247,8 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def julia_version(cls) -> str:
-        if sublime.platform() == "windows":
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = 11
-            return subprocess.check_output(
-                [cls.julia_exe(), "--version"], startupinfo=startupinfo).decode("utf-8").rstrip().split()[-1]
-        else:
-            return subprocess.check_output([cls.julia_exe(), "--version"]).decode("utf-8").rstrip().split()[-1]
+        return subprocess.check_output(
+            [cls.julia_exe(), "--version"], startupinfo=startupinfo()).decode("utf-8").rstrip().split()[-1]
 
     @classmethod
     def default_julia_environment(cls) -> str:
@@ -194,7 +257,7 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def server_version(cls) -> str:
-        return "9f6fdc0"  # LanguageServer v4.3.2-DEV
+        return "781240a"  # LanguageServer v4.3.2-DEV
 
     @classmethod
     def needs_update_or_installation(cls) -> bool:
@@ -212,7 +275,7 @@ class JuliaLanguageServer(AbstractPlugin):
         shutil.rmtree(cls.basedir(), ignore_errors=True)
         try:
             os.makedirs(cls.basedir(), exist_ok=True)
-            for file in ["Project.toml", "Manifest.toml"]:
+            for file in ("Project.toml", "Manifest.toml", "runtestitem.jl"):
                 ResourcePath.from_file_path(
                     os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.basedir(), file))
             # TODO Use cls.basedir() as DEPOT_PATH for language server
@@ -262,6 +325,170 @@ class JuliaLanguageServer(AbstractPlugin):
         if method == "textDocument/hover":
             if response.result and isinstance(response.result["contents"], dict) and response.result["contents"].get("kind") == "markdown":  # pyright: ignore
                 response.result["contents"]["value"] = prepare_markdown(response.result["contents"]["value"])  # pyright: ignore
+
+    def _render_testitems(self, uri: URI) -> None:
+        params = self.testitems.get(uri)
+        if not params:
+            return
+        scheme, path = parse_uri(uri)
+        if scheme != 'file':
+            return
+        session = self.weaksession()
+        if not session:
+            return
+        view = session.window.find_open_file(path)
+        if not view:
+            return
+
+        version = params['version']
+
+        regions_testitem = []  # type: List[sublime.Region]
+        regions_running = []  # type: List[sublime.Region]
+        regions_success = []  # type: List[sublime.Region]
+        regions_failure = []  # type: List[sublime.Region]
+        regions_error = []  # type: List[sublime.Region]
+        annotations_testitem = []  # type: List[str]
+        annotations_running = []  # type: List[str]
+        annotations_success = []  # type: List[str]
+        annotations_failure = []  # type: List[str]
+        annotations_error = []  # type: List[str]
+        for idx, item in enumerate(params['testitemdetails']):
+            offset = point_to_offset(Point.from_lsp(item['range']['start']), view)
+            error = item.get('error')
+            if error and isinstance(error, str):
+                regions_error.append(sublime.Region(offset))
+                annotations_error.append(error)
+                continue
+            state = item.get('state', 'testitem')
+            if state == 'testitem':
+                regions_testitem.append(sublime.Region(offset))
+                annotations_testitem.append('<a href="{}#idx={}&amp;version={}">Run Test</a>'.format(html.escape(uri), idx, version))
+            elif state == 'running':
+                regions_running.append(sublime.Region(offset))
+                annotations_running.append('Running…')
+            elif state == 'success':
+                regions_success.append(sublime.Region(offset))
+                annotations_success.append('<a href="{}#idx={}&amp;version={}">Rerun Test</a>'.format(html.escape(uri), idx, version))
+            elif state == 'failure':
+                regions_failure.append(sublime.Region(offset))
+                annotations_failure.append('<a href="{}#idx={}&amp;version={}">Rerun Test</a>'.format(html.escape(uri), idx, version))
+
+        if regions_testitem:
+            view.add_regions(
+                'lsp_julia_testitem',
+                regions_testitem,
+                scope='region.cyanish markup.testitem.lsp',
+                icon='Packages/LSP-julia/icons/testitem.png',
+                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
+                annotations=annotations_testitem,
+                annotation_color=view.style_for_scope('region.cyanish markup.accent.testitem.lsp')['foreground'],
+                on_navigate=self._run_testitem)
+        else:
+            view.erase_regions('lsp_julia_testitem')
+
+        if regions_running:
+            view.add_regions(
+                'lsp_julia_testitem_running',
+                regions_running,
+                scope='region.yellowish markup.testitem.running.lsp',
+                icon='Packages/LSP-julia/icons/hourglass.png',
+                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
+                annotations=annotations_running,
+                annotation_color=view.style_for_scope('region.cyanish markup.accent.testitem.running.lsp')['foreground'])
+        else:
+            view.erase_regions('lsp_julia_testitem_running')
+
+        if regions_success:
+            view.add_regions(
+                'lsp_julia_testitem_success',
+                regions_success,
+                scope='region.greenish markup.testitem.success.lsp',
+                icon='Packages/LSP-julia/icons/success.png',
+                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
+                annotations=annotations_success,
+                annotation_color=view.style_for_scope('region.cyanish markup.accent.testitem.success.lsp')['foreground'],
+                on_navigate=self._run_testitem)
+        else:
+            view.erase_regions('lsp_julia_testitem_success')
+
+        if regions_failure:
+            view.add_regions(
+                'lsp_julia_testitem_failure',
+                regions_failure,
+                scope='region.redish markup.testitem.failure.lsp',
+                icon='Packages/LSP-julia/icons/failure.png',
+                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
+                annotations=annotations_failure,
+                annotation_color=view.style_for_scope('region.cyanish markup.accent.testitem.failure.lsp')['foreground'],
+                on_navigate=self._run_testitem)
+        else:
+            view.erase_regions('lsp_julia_testitem_failure')
+
+        if regions_error:
+            view.add_regions(
+                'lsp_julia_testitem_error',
+                regions_error,
+                scope='region.redish markup.testitem.error.lsp',
+                icon='',
+                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
+                annotations=annotations_error,
+                annotation_color=view.style_for_scope('region.redish markup.accent.testitem.error.lsp')['foreground'])
+        else:
+            view.erase_regions('lsp_julia_testitem_error')
+
+    def _run_testitem(self, href: str) -> None:
+        if self.testitem_in_progress:
+            sublime.active_window().status_message("Another testitem is already running")
+            return
+        self.testitem_in_progress = True
+        # TODO change icon to hourglass
+        uri, fragment = urldefrag(href)
+        pq = parse_qs(fragment)
+        idx = int(pq['idx'][0])
+        version = int(pq['version'][0])
+
+        params = self.testitems.get(uri)
+        if not params:
+            return
+        if version != params['version']:
+            return
+        self.testitems[uri]['testitemdetails'][idx]['state'] = 'running'
+        self._render_testitems(uri)
+
+        # def run_async() -> None:
+        #     try:
+        #         result = subprocess.check_output([
+        #             JuliaLanguageServer.julia_exe(),
+        #             "--startup-file=no",
+        #             "--history-file=no",
+        #             "runtestitem.jl"
+        #         ], cwd=JuliaLanguageServer.basedir(), startupinfo=startupinfo()).decode("utf-8")
+        #     except subprocess.CalledProcessError:
+        #         pass
+
+        def run_async(uri: URI, idx: int, version: int) -> None:
+            time.sleep(3)
+            sublime.set_timeout(lambda: self._on_testitem_result(uri, idx, version, "success"))
+
+        sublime.set_timeout_async(partial(run_async, uri, idx, version))
+
+    def _on_testitem_result(self, uri: URI, idx: int, version: int, result: str) -> None:
+        self.testitem_in_progress = False
+        params = self.testitems.get(uri)
+        if not params:
+            return
+        # reject result if the language server has updated the testitems in the file
+        # (i.e. if there were changes in the meantime)
+        if version != params['version']:
+            return
+        self.testitems[uri]['testitemdetails'][idx]['state'] = result
+        self._render_testitems(uri)
+
+    def m_julia_publishTestitems(self, params: PublishTestItemsParams) -> None:
+        if params:
+            uri = params['uri']
+            self.testitems[uri] = params
+            self._render_testitems(uri)
 
 
 def plugin_loaded() -> None:
