@@ -20,6 +20,7 @@ from sublime_lib import ResourcePath
 from urllib.parse import parse_qs, urldefrag
 import html
 import importlib
+import json
 import mdpopups
 import os
 import re
@@ -27,7 +28,7 @@ import shutil
 import sublime
 import sublime_plugin
 import subprocess
-import time
+import traceback
 
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
@@ -35,28 +36,6 @@ VersionedTextDocumentPositionParams = TypedDict('VersionedTextDocumentPositionPa
     'textDocument': TextDocumentIdentifier,
     'version': int,
     'position': Position
-})
-
-# https://github.com/julia-vscode/julia-vscode/blob/main/src/testing/testFeature.ts
-TestItemDetail = TypedDict('TestItemDetail', {
-    'id': str,
-    'label': str,
-    'range': Range,
-    'code': NotRequired[str],
-    'code_range': NotRequired[Range],
-    'option_default_imports': NotRequired[bool],
-    'option_tags': NotRequired[List[str]],
-    'error': NotRequired[str],
-    'state': NotRequired[str]  # custom property from LSP-julia to store the item state
-})
-
-PublishTestItemsParams = TypedDict('PublishTestItemsParams', {
-    'uri': URI,
-    'version': int,
-    'project_path': str,
-    'package_path': str,
-    'package_name': str,
-    'testitemdetails': List[TestItemDetail]
 })
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/scripts/packages/VSCodeTestServer/src/testserver_protocol.jl
@@ -79,6 +58,29 @@ TestserverRunTestitemRequestParamsReturn = TypedDict('TestserverRunTestitemReque
     'status': str,
     'message': Optional[List[TestMessage]],
     'duration': Optional[float]
+})
+
+# https://github.com/julia-vscode/julia-vscode/blob/main/src/testing/testFeature.ts
+TestItemDetail = TypedDict('TestItemDetail', {
+    'id': str,
+    'label': str,
+    'range': Range,
+    'code': NotRequired[str],
+    'code_range': NotRequired[Range],
+    'option_default_imports': NotRequired[bool],
+    'option_tags': NotRequired[List[str]],
+    'error': NotRequired[str],
+    'status': NotRequired[str],  # custom property from LSP-julia to store the testitem status
+    'result': NotRequired[TestserverRunTestitemRequestParamsReturn]  # custom property from LSP-julia to store the testitem result
+})
+
+PublishTestItemsParams = TypedDict('PublishTestItemsParams', {
+    'uri': URI,
+    'version': int,
+    'project_path': str,
+    'package_path': str,
+    'package_name': str,
+    'testitemdetails': List[TestItemDetail]
 })
 
 
@@ -231,7 +233,11 @@ class JuliaLanguageServer(AbstractPlugin):
 
     @classmethod
     def basedir(cls) -> str:
-        return os.path.join(cls.storage_path(), "LSP-julia")
+        return os.path.join(cls.storage_path(), "LSP-julia", "languageserver")
+
+    @classmethod
+    def testrunnerdir(cls) -> str:
+        return os.path.join(cls.storage_path(), "LSP-julia", "testrunner")
 
     @classmethod
     def version_file(cls) -> str:
@@ -275,10 +281,14 @@ class JuliaLanguageServer(AbstractPlugin):
         shutil.rmtree(cls.basedir(), ignore_errors=True)
         try:
             os.makedirs(cls.basedir(), exist_ok=True)
-            for file in ("Project.toml", "Manifest.toml", "runtestitem.jl"):
+            for file in ("Project.toml", "Manifest.toml"):
                 ResourcePath.from_file_path(
                     os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.basedir(), file))
             # TODO Use cls.basedir() as DEPOT_PATH for language server
+            os.makedirs(cls.testrunnerdir(), exist_ok=True)
+            for file in ("Project.toml", "Manifest.toml", "runtestitem.jl"):
+                ResourcePath.from_file_path(
+                    os.path.join(cls.packagedir(), "testrunner", file)).copy(os.path.join(cls.testrunnerdir(), file))
             returncode = subprocess.call([
                 cls.julia_exe(),
                 "--startup-file=no",
@@ -354,24 +364,26 @@ class JuliaLanguageServer(AbstractPlugin):
         annotations_error = []  # type: List[str]
         for idx, item in enumerate(params['testitemdetails']):
             offset = point_to_offset(Point.from_lsp(item['range']['start']), view)
+            status = item.get('status', 'testitem')
             error = item.get('error')
             if error and isinstance(error, str):
                 regions_error.append(sublime.Region(offset))
                 annotations_error.append(error)
-                continue
-            state = item.get('state', 'testitem')
-            if state == 'testitem':
+            elif status == 'testitem':
                 regions_testitem.append(sublime.Region(offset))
                 annotations_testitem.append('<a href="{}#idx={}&amp;version={}">Run Test</a>'.format(html.escape(uri), idx, version))
-            elif state == 'running':
+            elif status == 'running':
                 regions_running.append(sublime.Region(offset))
                 annotations_running.append('Running…')
-            elif state == 'success':
+            elif status == 'passed':
                 regions_success.append(sublime.Region(offset))
                 annotations_success.append('<a href="{}#idx={}&amp;version={}">Rerun Test</a>'.format(html.escape(uri), idx, version))
-            elif state == 'failure':
+            elif status == 'failed':
                 regions_failure.append(sublime.Region(offset))
                 annotations_failure.append('<a href="{}#idx={}&amp;version={}">Rerun Test</a>'.format(html.escape(uri), idx, version))
+            elif status == 'errored':
+                regions_error.append(sublime.Region(offset))
+                annotations_error.append(item['result']['message'][0]['message'])  # pyright: ignore
 
         if regions_testitem:
             view.add_regions(
@@ -441,38 +453,64 @@ class JuliaLanguageServer(AbstractPlugin):
             sublime.active_window().status_message("Another testitem is already running")
             return
         self.testitem_in_progress = True
-        # TODO change icon to hourglass
         uri, fragment = urldefrag(href)
         pq = parse_qs(fragment)
         idx = int(pq['idx'][0])
         version = int(pq['version'][0])
 
-        params = self.testitems.get(uri)
-        if not params:
+        testitemparams = self.testitems.get(uri)
+        if not testitemparams:
             return
-        if version != params['version']:
+        if version != testitemparams['version']:
             return
-        self.testitems[uri]['testitemdetails'][idx]['state'] = 'running'
+        self.testitems[uri]['testitemdetails'][idx]['status'] = 'running'
         self._render_testitems(uri)
 
-        # def run_async() -> None:
-        #     try:
-        #         result = subprocess.check_output([
-        #             JuliaLanguageServer.julia_exe(),
-        #             "--startup-file=no",
-        #             "--history-file=no",
-        #             "runtestitem.jl"
-        #         ], cwd=JuliaLanguageServer.basedir(), startupinfo=startupinfo()).decode("utf-8")
-        #     except subprocess.CalledProcessError:
-        #         pass
+        def run_async(uri: URI, idx: int, version: int, params: TestserverRunTestitemRequestParams) -> None:
+            try:
+                params_json = json.dumps(params, separators=(',', ':'))
+                # TODO run process in a non-blocking way!
+                result_json = subprocess.check_output([
+                    JuliaLanguageServer.julia_exe(),
+                    "--startup-file=no",
+                    "--history-file=no",
+                    "runtestitem.jl",
+                    params_json
+                ], cwd=JuliaLanguageServer.testrunnerdir(), startupinfo=startupinfo()).decode("utf-8")
+                result = json.loads(result_json)
+                sublime.set_timeout(lambda: self._on_testitem_result(uri, idx, version, result))
+            except Exception:
+                self.testitem_in_progress = False
+                self.testitems[uri]['testitemdetails'][idx]['error'] = "An error occured while trying to run runtestitem.jl"
+                traceback.print_exc()
+                sublime.set_timeout(lambda: self._render_testitems(uri))
 
-        def run_async(uri: URI, idx: int, version: int) -> None:
-            time.sleep(3)
-            sublime.set_timeout(lambda: self._on_testitem_result(uri, idx, version, "success"))
+        testitem = testitemparams['testitemdetails'][idx]
+        assert testitem.get('error') is None
+        code_range = testitem.get('code_range')
+        if not code_range:
+            return
+        code = testitem.get('code')
+        if not code:
+            return
+        params = {
+            'uri': uri,
+            'name': testitem['label'],
+            'packageName': testitemparams['package_name'],
+            'useDefaultUsings': True,
+            'line': code_range['start']['line'],
+            'column': code_range['start']['character'],
+            'code': code
+        }  # type: TestserverRunTestitemRequestParams
+        sublime.set_timeout_async(partial(run_async, uri, idx, version, params))
 
-        sublime.set_timeout_async(partial(run_async, uri, idx, version))
-
-    def _on_testitem_result(self, uri: URI, idx: int, version: int, result: str) -> None:
+    def _on_testitem_result(
+        self,
+        uri: URI,
+        idx: int,
+        version: int,
+        result: TestserverRunTestitemRequestParamsReturn
+    ) -> None:
         self.testitem_in_progress = False
         params = self.testitems.get(uri)
         if not params:
@@ -481,7 +519,8 @@ class JuliaLanguageServer(AbstractPlugin):
         # (i.e. if there were changes in the meantime)
         if version != params['version']:
             return
-        self.testitems[uri]['testitemdetails'][idx]['state'] = result
+        self.testitems[uri]['testitemdetails'][idx]['status'] = result['status']
+        self.testitems[uri]['testitemdetails'][idx]['result'] = result
         self._render_testitems(uri)
 
     def m_julia_publishTestitems(self, params: PublishTestItemsParams) -> None:
