@@ -12,6 +12,7 @@ from LSP.plugin.core.protocol import Location, Point, Position, Range, TextDocum
 from LSP.plugin.core.typing import Any, Dict, List, NotRequired, Optional, TypedDict, Union
 from LSP.plugin.core.url import parse_uri
 from LSP.plugin.core.views import point_to_offset
+from LSP.plugin.core.views import range_to_region
 from LSP.plugin.core.views import text_document_position_params
 from LSP.plugin.core.views import uri_from_view
 from collections import deque
@@ -92,6 +93,24 @@ JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
 SUBLIME_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
+
+TESTITEM_ICONS = {
+    'testitem': 'Packages/LSP-julia/icons/testitem.png',
+    'invalid': '',
+    'running': 'Packages/LSP-julia/icons/hourglass.png',
+    'passed': 'Packages/LSP-julia/icons/success.png',
+    'failed': 'Packages/LSP-julia/icons/failure.png',
+    'errored': 'Packages/LSP/icons/error.png'
+}
+
+TESTITEM_SCOPES = {
+    'testitem': 'region.cyanish markup.testitem.lsp',
+    'invalid': 'region.redish markup.error',  # unused
+    'running': 'region.yellowish markup.testitem.running.lsp',
+    'passed': 'region.greenish markup.testitem.passed.lsp',
+    'failed': 'region.redish markup.error.testitem.lsp',
+    'errored': 'region.redish markup.error.testitem.lsp'
+}
 
 
 def find_output_view(window: sublime.Window, name: str) -> Optional[sublime.View]:
@@ -210,6 +229,8 @@ class JuliaLanguageServer(AbstractPlugin):
 
     testitems = {}  # type: Dict[URI, PublishTestItemsParams]
     testitem_in_progress = False
+    testitem_error_regions = {}  # type: Dict[URI, List[sublime.Region]]
+    testitem_error_annotations = {}  # type: Dict[URI, List[str]]
 
     def __init__(self, weaksession) -> None:
         super().__init__(weaksession)
@@ -352,101 +373,97 @@ class JuliaLanguageServer(AbstractPlugin):
 
         version = params['version']
 
-        regions_testitem = []  # type: List[sublime.Region]
-        regions_running = []  # type: List[sublime.Region]
-        regions_success = []  # type: List[sublime.Region]
-        regions_failure = []  # type: List[sublime.Region]
-        regions_error = []  # type: List[sublime.Region]
-        annotations_testitem = []  # type: List[str]
-        annotations_running = []  # type: List[str]
-        annotations_success = []  # type: List[str]
-        annotations_failure = []  # type: List[str]
-        annotations_error = []  # type: List[str]
+        regions = {
+            'testitem': [],
+            'invalid': [],
+            'running': [],
+            'passed': [],
+            'failed': [],
+            'errored': []
+        }  # type: Dict[str, List[sublime.Region]]
+
+        annotations = {
+            'testitem': [],
+            'invalid': [],
+            'running': [],
+            'passed': [],
+            'failed': [],
+            'errored': []
+        }  # type: Dict[str, List[str]]
+
         for idx, item in enumerate(params['testitemdetails']):
-            offset = point_to_offset(Point.from_lsp(item['range']['start']), view)
+            testitem_region = sublime.Region(point_to_offset(Point.from_lsp(item['range']['start']), view))
+            run_test_annotation = '<a href="{}#idx={}&amp;version={}">Run Test</a>'.format(html.escape(uri), idx, version)
             status = item.get('status', 'testitem')
             error = item.get('error')
             if error and isinstance(error, str):
-                regions_error.append(sublime.Region(offset))
-                annotations_error.append(error)
+                regions['invalid'].append(testitem_region)
+                annotations['invalid'].append(error)
             elif status == 'testitem':
-                regions_testitem.append(sublime.Region(offset))
-                annotations_testitem.append('<a href="{}#idx={}&amp;version={}">Run Test</a>'.format(html.escape(uri), idx, version))
+                regions[status].append(testitem_region)
+                annotations[status].append(run_test_annotation)
             elif status == 'running':
-                regions_running.append(sublime.Region(offset))
-                annotations_running.append('Running…')
+                regions[status].append(testitem_region)
+                annotations[status].append('Running…')
             elif status == 'passed':
-                regions_success.append(sublime.Region(offset))
-                annotations_success.append('<a href="{}#idx={}&amp;version={}">Rerun Test</a>'.format(html.escape(uri), idx, version))
+                regions[status].append(testitem_region)
+                annotations[status].append(run_test_annotation)
             elif status == 'failed':
-                regions_failure.append(sublime.Region(offset))
-                annotations_failure.append('<a href="{}#idx={}&amp;version={}">Rerun Test</a>'.format(html.escape(uri), idx, version))
+                regions[status].append(testitem_region)
+                annotations[status].append(run_test_annotation)
+                for message in item['result']['message']:  # pyright: ignore
+                    location = message['location']
+                    if location:
+                        self.testitem_error_regions.setdefault(uri, []).append(range_to_region(location['range'], view))
+                        self.testitem_error_annotations.setdefault(uri, []).append(message['message'])
             elif status == 'errored':
-                regions_error.append(sublime.Region(offset))
-                annotations_error.append(item['result']['message'][0]['message'])  # pyright: ignore
+                regions[status].append(testitem_region)
+                annotations[status].append(run_test_annotation)
+                self.testitem_error_regions.setdefault(uri, []).append(range_to_region(item['result']['message'][0]['location']['range'], view))  # pyright: ignore
+                self.testitem_error_annotations.setdefault(uri, []).append(item['result']['message'][0]['message'])  # pyright: ignore
 
-        if regions_testitem:
-            view.add_regions(
-                'lsp_julia_testitem',
-                regions_testitem,
-                scope='region.cyanish markup.testitem.lsp',
-                icon='Packages/LSP-julia/icons/testitem.png',
-                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
-                annotations=annotations_testitem,
-                annotation_color=view.style_for_scope('region.cyanish markup.accent.testitem.lsp')['foreground'],
-                on_navigate=self._run_testitem)
-        else:
-            view.erase_regions('lsp_julia_testitem')
+        testitem_annotation_color = view.style_for_scope('region.cyanish markup.accent.testitem.lsp')['foreground']
+        error_annotation_color = view.style_for_scope('region.redish markup.error.testitem.lsp')['foreground']
 
-        if regions_running:
-            view.add_regions(
-                'lsp_julia_testitem_running',
-                regions_running,
-                scope='region.yellowish markup.testitem.running.lsp',
-                icon='Packages/LSP-julia/icons/hourglass.png',
-                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
-                annotations=annotations_running,
-                annotation_color=view.style_for_scope('region.cyanish markup.accent.testitem.running.lsp')['foreground'])
-        else:
-            view.erase_regions('lsp_julia_testitem_running')
+        for status in ('testitem', 'invalid', 'running', 'passed', 'failed', 'errored'):
+            regions_key = 'lsp_julia_testitem_{}'.format(status)
+            if regions[status]:
+                view.add_regions(
+                    regions_key,
+                    regions[status],
+                    scope=TESTITEM_SCOPES[status],
+                    icon=TESTITEM_ICONS[status],
+                    flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
+                    annotations=annotations[status],
+                    annotation_color=error_annotation_color if status == 'invalid' else testitem_annotation_color,
+                    on_navigate=self._run_testitem if status in ('testitem', 'passed', 'failed', 'errored') else None)
+            else:
+                view.erase_regions(regions_key)
 
-        if regions_success:
+    def _render_error_locations(self, uri: URI) -> None:
+        scheme, path = parse_uri(uri)
+        if scheme != 'file':
+            return
+        session = self.weaksession()
+        if not session:
+            return
+        view = session.window.find_open_file(path)
+        if not view:
+            return
+        regions_key = 'lsp_julia_testitem_error_location'
+        regions = self.testitem_error_regions.get(uri)
+        if regions:
+            error_annotation_color = view.style_for_scope('region.redish markup.error.testitem.lsp')['foreground']
             view.add_regions(
-                'lsp_julia_testitem_success',
-                regions_success,
-                scope='region.greenish markup.testitem.success.lsp',
-                icon='Packages/LSP-julia/icons/success.png',
+                regions_key,
+                regions,
+                scope='region.redish markup.error.testitem.lsp',
+                icon='Packages/LSP/icons/error.png',
                 flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
-                annotations=annotations_success,
-                annotation_color=view.style_for_scope('region.cyanish markup.accent.testitem.success.lsp')['foreground'],
-                on_navigate=self._run_testitem)
+                annotations=self.testitem_error_annotations[uri],
+                annotation_color=error_annotation_color)
         else:
-            view.erase_regions('lsp_julia_testitem_success')
-
-        if regions_failure:
-            view.add_regions(
-                'lsp_julia_testitem_failure',
-                regions_failure,
-                scope='region.redish markup.testitem.failure.lsp',
-                icon='Packages/LSP-julia/icons/failure.png',
-                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
-                annotations=annotations_failure,
-                annotation_color=view.style_for_scope('region.cyanish markup.accent.testitem.failure.lsp')['foreground'],
-                on_navigate=self._run_testitem)
-        else:
-            view.erase_regions('lsp_julia_testitem_failure')
-
-        if regions_error:
-            view.add_regions(
-                'lsp_julia_testitem_error',
-                regions_error,
-                scope='region.redish markup.testitem.error.lsp',
-                icon='',
-                flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
-                annotations=annotations_error,
-                annotation_color=view.style_for_scope('region.redish markup.accent.testitem.error.lsp')['foreground'])
-        else:
-            view.erase_regions('lsp_julia_testitem_error')
+            view.erase_regions(regions_key)
 
     def _run_testitem(self, href: str) -> None:
         if self.testitem_in_progress:
@@ -465,6 +482,9 @@ class JuliaLanguageServer(AbstractPlugin):
             return
         self.testitems[uri]['testitemdetails'][idx]['status'] = 'running'
         self._render_testitems(uri)
+        self.testitem_error_regions[uri] = []
+        self.testitem_error_annotations[uri] = []
+        self._render_error_locations(uri)
 
         def run_async(uri: URI, idx: int, version: int, params: TestserverRunTestitemRequestParams) -> None:
             try:
@@ -522,6 +542,7 @@ class JuliaLanguageServer(AbstractPlugin):
         self.testitems[uri]['testitemdetails'][idx]['status'] = result['status']
         self.testitems[uri]['testitemdetails'][idx]['result'] = result
         self._render_testitems(uri)
+        self._render_error_locations(uri)
 
     def m_julia_publishTestitems(self, params: PublishTestItemsParams) -> None:
         if params:
