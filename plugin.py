@@ -81,7 +81,8 @@ def send_julia_repl(window: sublime.Window, code_block: str) -> None:
         code_block += "\n"
     window.run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
     # return focus to the sending window
-    window.focus_view(return_focus)
+    if return_focus:
+        window.focus_view(return_focus)
 
 
 def versioned_text_document_position_params(view: sublime.View, location: int) -> Dict[str, Any]:
