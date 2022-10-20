@@ -30,6 +30,7 @@ import sublime
 import sublime_plugin
 import subprocess
 import traceback
+import threading
 
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
@@ -501,7 +502,28 @@ class JuliaLanguageServer(AbstractPlugin):
         self._render_testitems(uri)
         self._render_error_locations(uri)
 
-        def run_async(
+        testitem = testitemparams['testitemdetails'][idx]
+        assert testitem.get('error') is None
+        code_range = testitem.get('code_range')
+        if not code_range:
+            return
+        code = testitem.get('code')
+        if not code:
+            return
+        params = {
+            'uri': uri,
+            'name': testitem['label'],
+            'packageName': testitemparams['package_name'],
+            'useDefaultUsings': True,
+            'line': code_range['start']['line'],
+            'column': code_range['start']['character'],
+            'code': code
+        }  # type: TestserverRunTestitemRequestParams
+        project_path = testitemparams['project_path']
+        package_path = testitemparams['package_path']
+        package_name = testitemparams['package_name']
+
+        def run_as_daemon_thread(
             uri: URI,
             idx: int,
             version: int,
@@ -524,7 +546,6 @@ class JuliaLanguageServer(AbstractPlugin):
                     'package_name': package_name
                 }
                 params_json = json.dumps(params_extended, separators=(',', ':'))
-                # TODO run process in a non-blocking way!
                 result_json = subprocess.check_output([
                     JuliaLanguageServer.julia_exe(),
                     "--startup-file=no",
@@ -534,31 +555,19 @@ class JuliaLanguageServer(AbstractPlugin):
                     params_json
                 ], cwd=JuliaLanguageServer.testrunnerdir(), startupinfo=startupinfo()).decode("utf-8")
                 result = json.loads(result_json)
-                sublime.set_timeout(lambda: self._on_testitem_result(uri, idx, version, result))
+                sublime.set_timeout(partial(self._on_testitem_result, uri, idx, version, result))
             except Exception:
                 self.testitem_in_progress = False
                 self.testitems[uri]['testitemdetails'][idx]['error'] = "An error occured while trying to run this testitem.<br>Please check the console and consider to open an issue report in the LSP-julia GitHub repo."
                 traceback.print_exc()
-                sublime.set_timeout(lambda: self._render_testitems(uri))
+                sublime.set_timeout(partial(self._render_testitems, uri))
 
-        testitem = testitemparams['testitemdetails'][idx]
-        assert testitem.get('error') is None
-        code_range = testitem.get('code_range')
-        if not code_range:
-            return
-        code = testitem.get('code')
-        if not code:
-            return
-        params = {
-            'uri': uri,
-            'name': testitem['label'],
-            'packageName': testitemparams['package_name'],
-            'useDefaultUsings': True,
-            'line': code_range['start']['line'],
-            'column': code_range['start']['character'],
-            'code': code
-        }  # type: TestserverRunTestitemRequestParams
-        sublime.set_timeout_async(partial(run_async, uri, idx, version, params, testitemparams['project_path'], testitemparams['package_path'], testitemparams['package_name']))
+        run_testitem_thread = threading.Thread(
+            target=run_as_daemon_thread,
+            args=(uri, idx, version, params, project_path, package_path, package_name),
+            daemon=True)
+
+        run_testitem_thread.start()
 
     def _on_testitem_result(
         self,
