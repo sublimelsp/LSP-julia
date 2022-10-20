@@ -105,7 +105,7 @@ TESTITEM_ICONS = {
 
 TESTITEM_SCOPES = {
     'testitem': 'region.cyanish markup.testitem.lsp',
-    'invalid': 'region.redish markup.error',  # unused
+    'invalid': 'region.redish markup.error',  # unused (no icon)
     'running': 'region.yellowish markup.testitem.running.lsp',
     'passed': 'region.greenish markup.testitem.passed.lsp',
     'failed': 'region.redish markup.error.testitem.lsp',
@@ -307,7 +307,7 @@ class JuliaLanguageServer(AbstractPlugin):
                     os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.basedir(), file))
             # TODO Use cls.basedir() as DEPOT_PATH for language server
             os.makedirs(cls.testrunnerdir(), exist_ok=True)
-            for file in ("Project.toml", "Manifest.toml", "runtestitem.jl"):
+            for file in ("Project.toml", "runtestitem.jl"):
                 ResourcePath.from_file_path(
                     os.path.join(cls.packagedir(), "testrunner", file)).copy(os.path.join(cls.testrunnerdir(), file))
             returncode = subprocess.call([
@@ -357,7 +357,7 @@ class JuliaLanguageServer(AbstractPlugin):
             if response.result and isinstance(response.result["contents"], dict) and response.result["contents"].get("kind") == "markdown":  # pyright: ignore
                 response.result["contents"]["value"] = prepare_markdown(response.result["contents"]["value"])  # pyright: ignore
 
-    def _render_testitems(self, uri: URI) -> None:
+    def _render_testitems(self, uri: URI, new_result_idx: Optional[int] = None) -> None:
         params = self.testitems.get(uri)
         if not params:
             return
@@ -394,6 +394,12 @@ class JuliaLanguageServer(AbstractPlugin):
         for idx, item in enumerate(params['testitemdetails']):
             testitem_region = sublime.Region(point_to_offset(Point.from_lsp(item['range']['start']), view))
             run_test_annotation = '<a href="{}#idx={}&amp;version={}">Run Test</a>'.format(html.escape(uri), idx, version)
+            duration = item.get('result', {}).get('duration')
+            if duration is not None:
+                if duration < 100:
+                    run_test_annotation += " ({}ms)".format(round(duration))
+                else:
+                    run_test_annotation += " ({:0.2f}s)".format(duration/1000)
             status = item.get('status', 'testitem')
             error = item.get('error')
             if error and isinstance(error, str):
@@ -411,16 +417,18 @@ class JuliaLanguageServer(AbstractPlugin):
             elif status == 'failed':
                 regions[status].append(testitem_region)
                 annotations[status].append(run_test_annotation)
-                for message in item['result']['message']:  # pyright: ignore
-                    location = message['location']
-                    if location:
-                        self.testitem_error_regions.setdefault(uri, []).append(range_to_region(location['range'], view))
-                        self.testitem_error_annotations.setdefault(uri, []).append(message['message'])
+                if idx == new_result_idx:
+                    for message in item['result']['message']:  # pyright: ignore
+                        location = message['location']
+                        if location:
+                            self.testitem_error_regions.setdefault(uri, []).append(range_to_region(location['range'], view))
+                            self.testitem_error_annotations.setdefault(uri, []).append(message['message'])
             elif status == 'errored':
                 regions[status].append(testitem_region)
                 annotations[status].append(run_test_annotation)
-                self.testitem_error_regions.setdefault(uri, []).append(range_to_region(item['result']['message'][0]['location']['range'], view))  # pyright: ignore
-                self.testitem_error_annotations.setdefault(uri, []).append(item['result']['message'][0]['message'])  # pyright: ignore
+                if idx == new_result_idx:
+                    self.testitem_error_regions.setdefault(uri, []).append(range_to_region(item['result']['message'][0]['location']['range'], view))  # pyright: ignore
+                    self.testitem_error_annotations.setdefault(uri, []).append(item['result']['message'][0]['message'])  # pyright: ignore
 
         testitem_annotation_color = view.style_for_scope('region.cyanish markup.accent.testitem.lsp')['foreground']
         error_annotation_color = view.style_for_scope('region.redish markup.error.testitem.lsp')['foreground']
@@ -457,13 +465,20 @@ class JuliaLanguageServer(AbstractPlugin):
             view.add_regions(
                 regions_key,
                 regions,
-                scope='region.redish markup.error.testitem.lsp',
-                icon='Packages/LSP/icons/error.png',
                 flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
                 annotations=self.testitem_error_annotations[uri],
-                annotation_color=error_annotation_color)
+                annotation_color=error_annotation_color,
+                on_close=lambda: self._hide_annotations(uri))
         else:
             view.erase_regions(regions_key)
+
+    def _hide_annotations(self, uri: URI) -> None:
+        # TODO this will close all annotations if the close button of any of them is clicked.
+        # We probably need to use a unique region key per annotation in order to make it possible
+        # to close annotations one by one.
+        self.testitem_error_regions[uri] = []
+        self.testitem_error_annotations[uri] = []
+        self._render_error_locations(uri)
 
     def _run_testitem(self, href: str) -> None:
         if self.testitem_in_progress:
@@ -481,19 +496,40 @@ class JuliaLanguageServer(AbstractPlugin):
         if version != testitemparams['version']:
             return
         self.testitems[uri]['testitemdetails'][idx]['status'] = 'running'
-        self._render_testitems(uri)
         self.testitem_error_regions[uri] = []
         self.testitem_error_annotations[uri] = []
+        self._render_testitems(uri)
         self._render_error_locations(uri)
 
-        def run_async(uri: URI, idx: int, version: int, params: TestserverRunTestitemRequestParams) -> None:
+        def run_async(
+            uri: URI,
+            idx: int,
+            version: int,
+            params: TestserverRunTestitemRequestParams,
+            project_path: str,
+            package_path: str,
+            package_name: str
+        ) -> None:
             try:
-                params_json = json.dumps(params, separators=(',', ':'))
+                params_extended = {
+                    'uri': params['uri'],
+                    'name': params['name'],
+                    'packageName': params['packageName'],
+                    'useDefaultUsings': params['useDefaultUsings'],
+                    'line': params['line'],
+                    'column': params['column'],
+                    'code': params['code'],
+                    'project_path': project_path,
+                    'package_path': package_path,
+                    'package_name': package_name
+                }
+                params_json = json.dumps(params_extended, separators=(',', ':'))
                 # TODO run process in a non-blocking way!
                 result_json = subprocess.check_output([
                     JuliaLanguageServer.julia_exe(),
                     "--startup-file=no",
                     "--history-file=no",
+                    "--project={}".format(JuliaLanguageServer.testrunnerdir()),
                     "runtestitem.jl",
                     params_json
                 ], cwd=JuliaLanguageServer.testrunnerdir(), startupinfo=startupinfo()).decode("utf-8")
@@ -501,7 +537,7 @@ class JuliaLanguageServer(AbstractPlugin):
                 sublime.set_timeout(lambda: self._on_testitem_result(uri, idx, version, result))
             except Exception:
                 self.testitem_in_progress = False
-                self.testitems[uri]['testitemdetails'][idx]['error'] = "An error occured while trying to run runtestitem.jl"
+                self.testitems[uri]['testitemdetails'][idx]['error'] = "An error occured while trying to run this testitem.<br>Please check the console and consider to open an issue report in the LSP-julia GitHub repo."
                 traceback.print_exc()
                 sublime.set_timeout(lambda: self._render_testitems(uri))
 
@@ -522,7 +558,7 @@ class JuliaLanguageServer(AbstractPlugin):
             'column': code_range['start']['character'],
             'code': code
         }  # type: TestserverRunTestitemRequestParams
-        sublime.set_timeout_async(partial(run_async, uri, idx, version, params))
+        sublime.set_timeout_async(partial(run_async, uri, idx, version, params, testitemparams['project_path'], testitemparams['package_path'], testitemparams['package_name']))
 
     def _on_testitem_result(
         self,
@@ -541,7 +577,7 @@ class JuliaLanguageServer(AbstractPlugin):
             return
         self.testitems[uri]['testitemdetails'][idx]['status'] = result['status']
         self.testitems[uri]['testitemdetails'][idx]['result'] = result
-        self._render_testitems(uri)
+        self._render_testitems(uri, idx)
         self._render_error_locations(uri)
 
     def m_julia_publishTestitems(self, params: PublishTestItemsParams) -> None:
