@@ -32,9 +32,8 @@ struct TestserverRunTestitemRequestParams
 end
 
 #==========================================================================================#
-# The following functions are extracted with some a few adjustments from VSCodeTestServer.jl
-# Keep in sync with
-# https://github.com/julia-vscode/julia-vscode/blob/main/scripts/packages/VSCodeTestServer/src/VSCodeTestServer.jl
+# Adjusted functions extracted from VSCodeTestServer.jl
+# Keep in sync with https://github.com/julia-vscode/julia-vscode/blob/main/scripts/packages/VSCodeTestServer/src/VSCodeTestServer.jl
 
 function uri2filepath(uri::AbstractString)
     parsed_uri = try
@@ -218,9 +217,7 @@ function run_testitem(params::TestserverRunTestitemRequestParams)
     ts = Test.pop_testset()
 
     try
-        println("a")
         Test.finish(ts)
-        println("b")
 
         return TestserverRunTestitemRequestParamsReturn("passed", nothing, elapsed_time)
     catch err
