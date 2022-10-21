@@ -75,11 +75,14 @@ def send_julia_repl(window: sublime.Window, code_block: str) -> None:
     """
     Send a code block string to Julia REPL via Terminus package.
     """
-
+    return_focus = window.active_view()
     # ensure code block ends with newline to enforce execution in REPL
     if not code_block.endswith("\n"):
         code_block += "\n"
     window.run_command("terminus_send_string", {"string": code_block, "tag": JULIA_REPL_TAG})
+    # return focus to the sending window
+    if return_focus:
+        window.focus_view(return_focus)
 
 
 def versioned_text_document_position_params(view: sublime.View, location: int) -> Dict[str, Any]:
