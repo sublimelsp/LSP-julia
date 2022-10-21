@@ -1,9 +1,9 @@
 inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 16 -h 16 --export-filename=failure.png failure.svg
 inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 32 -h 32 --export-filename=failure@2x.png failure.svg
 inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 48 -h 48 --export-filename=failure@3x.png failure.svg
-inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 16 -h 16 --export-filename=hourglass.png hourglass.svg
-inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 32 -h 32 --export-filename=hourglass@2x.png hourglass.svg
-inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 48 -h 48 --export-filename=hourglass@3x.png hourglass.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 16 -h 16 --export-filename=stopwatch.png stopwatch.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 32 -h 32 --export-filename=stopwatch@2x.png stopwatch.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 48 -h 48 --export-filename=stopwatch@3x.png stopwatch.svg
 inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 16 -h 16 --export-filename=success.png success.svg
 inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 32 -h 32 --export-filename=success@2x.png success.svg
 inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 48 -h 48 --export-filename=success@3x.png success.svg

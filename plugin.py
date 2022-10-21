@@ -40,6 +40,7 @@ VersionedTextDocumentPositionParams = TypedDict('VersionedTextDocumentPositionPa
     'position': Position
 })
 
+# https://github.com/julia-vscode/julia-vscode/blob/main/src/testing/testFeature.ts
 # https://github.com/julia-vscode/julia-vscode/blob/main/scripts/packages/VSCodeTestServer/src/testserver_protocol.jl
 TestserverRunTestitemRequestParams = TypedDict('TestserverRunTestitemRequestParams', {
     'uri': str,
@@ -62,7 +63,6 @@ TestserverRunTestitemRequestParamsReturn = TypedDict('TestserverRunTestitemReque
     'duration': Optional[float]
 })
 
-# https://github.com/julia-vscode/julia-vscode/blob/main/src/testing/testFeature.ts
 TestItemDetail = TypedDict('TestItemDetail', {
     'id': str,
     'label': str,
@@ -86,32 +86,58 @@ PublishTestItemsParams = TypedDict('PublishTestItemsParams', {
 })
 
 
+# class TestItemStatus(StrEnum):
+class TestItemStatus:
+    # Used as response values by VSCodeTestServer.jl
+    Passed = 'passed'
+    Failed = 'failed'
+    Errored = 'errored'
+    # Additional status indicators used for the different annotations in the view
+    Undetermined = 'undetermined'
+    Pending = 'pending'
+    Invalid = 'invalid'
+
+
+# sublime.Kind tuples for the "Run Testitem" QuickPanelItems
+KIND_TESTITEM_PASSED = (sublime.KIND_ID_COLOR_GREENISH, "p", "Passed")
+KIND_TESTITEM_FAILED = (sublime.KIND_ID_COLOR_REDISH, "f", "Failed")
+KIND_TESTITEM_ERRORED = (sublime.KIND_ID_COLOR_REDISH, "e", "Errored")
+
+# sublime.Kind tuples for the "Change Current Environment" QuickPanelItems
+KIND_DEFAULT_ENVIRONMENT = (sublime.KIND_ID_COLOR_YELLOWISH, "d", "Default Environment")
+KIND_WORKSPACE_FOLDER = (sublime.KIND_ID_COLOR_PURPLISH, "f", "Workspace Folder")
+
+TESTITEM_ICONS = {
+    TestItemStatus.Passed: 'Packages/LSP-julia/icons/success.png',
+    TestItemStatus.Failed: 'Packages/LSP-julia/icons/failure.png',
+    TestItemStatus.Errored: 'Packages/LSP/icons/error.png',
+    TestItemStatus.Undetermined: '',
+    TestItemStatus.Pending: 'Packages/LSP-julia/icons/stopwatch.png',
+    TestItemStatus.Invalid: ''
+}
+
+TESTITEM_SCOPES = {
+    TestItemStatus.Passed: 'region.greenish markup.testitem.passed.lsp',
+    TestItemStatus.Failed: 'region.redish markup.error markup.testitem.failed.lsp',
+    TestItemStatus.Errored: 'region.redish markup.error markup.testitem.errored.lsp',
+    TestItemStatus.Undetermined: 'region.cyanish markup.testitem.undetermined.lsp',
+    TestItemStatus.Pending: 'region.yellowish markup.testitem.pending.lsp',
+    TestItemStatus.Invalid: 'region.redish markup.error markup.testitem.invalid.lsp'
+}
+
+TESTITEM_KINDS = {
+    TestItemStatus.Passed: KIND_TESTITEM_PASSED,
+    TestItemStatus.Failed: KIND_TESTITEM_FAILED,
+    TestItemStatus.Errored: KIND_TESTITEM_ERRORED
+}
+
+SUBLIME_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
 SETTINGS_FILE = "LSP-julia.sublime-settings"
 SESSION_NAME = "julia"
 STATUS_BAR_KEY = "lsp_julia_environment"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
-
-SUBLIME_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
-
-TESTITEM_ICONS = {
-    'testitem': 'Packages/LSP-julia/icons/testitem.png',
-    'invalid': '',
-    'running': 'Packages/LSP-julia/icons/hourglass.png',
-    'passed': 'Packages/LSP-julia/icons/success.png',
-    'failed': 'Packages/LSP-julia/icons/failure.png',
-    'errored': 'Packages/LSP/icons/error.png'
-}
-
-TESTITEM_SCOPES = {
-    'testitem': 'region.cyanish markup.testitem.lsp',
-    'invalid': 'region.redish markup.error',  # unused (no icon)
-    'running': 'region.yellowish markup.testitem.running.lsp',
-    'passed': 'region.greenish markup.testitem.passed.lsp',
-    'failed': 'region.redish markup.error.testitem.lsp',
-    'errored': 'region.redish markup.error.testitem.lsp'
-}
 
 
 def find_output_view(window: sublime.Window, name: str) -> Optional[sublime.View]:
@@ -359,11 +385,11 @@ class JuliaLanguageServer(AbstractPlugin):
                 response.result["contents"]["value"] = prepare_markdown(response.result["contents"]["value"])  # pyright: ignore
 
     def _render_testitems(self, uri: URI, new_result_idx: Optional[int] = None) -> None:
-        params = self.testitems.get(uri)
-        if not params:
-            return
         scheme, path = parse_uri(uri)
         if scheme != 'file':
+            return
+        params = self.testitems.get(path)
+        if not params:
             return
         session = self.weaksession()
         if not session:
@@ -375,21 +401,21 @@ class JuliaLanguageServer(AbstractPlugin):
         version = params['version']
 
         regions = {
-            'testitem': [],
-            'invalid': [],
-            'running': [],
-            'passed': [],
-            'failed': [],
-            'errored': []
+            TestItemStatus.Passed: [],
+            TestItemStatus.Failed: [],
+            TestItemStatus.Errored: [],
+            TestItemStatus.Undetermined: [],
+            TestItemStatus.Pending: [],
+            TestItemStatus.Invalid: []
         }  # type: Dict[str, List[sublime.Region]]
 
         annotations = {
-            'testitem': [],
-            'invalid': [],
-            'running': [],
-            'passed': [],
-            'failed': [],
-            'errored': []
+            TestItemStatus.Passed: [],
+            TestItemStatus.Failed: [],
+            TestItemStatus.Errored: [],
+            TestItemStatus.Undetermined: [],
+            TestItemStatus.Pending: [],
+            TestItemStatus.Invalid: []
         }  # type: Dict[str, List[str]]
 
         for idx, item in enumerate(params['testitemdetails']):
@@ -401,40 +427,36 @@ class JuliaLanguageServer(AbstractPlugin):
                     run_test_annotation += " ({}ms)".format(round(duration))
                 else:
                     run_test_annotation += " ({:0.2f}s)".format(duration/1000)
-            status = item.get('status', 'testitem')
+            status = item.get('status', TestItemStatus.Undetermined)
             error = item.get('error')
             if error and isinstance(error, str):
-                regions['invalid'].append(testitem_region)
-                annotations['invalid'].append(error)
-            elif status == 'testitem':
-                regions[status].append(testitem_region)
+                regions[TestItemStatus.Invalid].append(testitem_region)
+                annotations[TestItemStatus.Invalid].append(error)
+                continue
+
+            regions[status].append(testitem_region)
+            if status == TestItemStatus.Undetermined:
                 annotations[status].append(run_test_annotation)
-            elif status == 'running':
-                regions[status].append(testitem_region)
+            elif status == TestItemStatus.Pending:
                 annotations[status].append('Running…')
-            elif status == 'passed':
-                regions[status].append(testitem_region)
+            elif status == TestItemStatus.Passed:
                 annotations[status].append(run_test_annotation)
-            elif status == 'failed':
-                regions[status].append(testitem_region)
+            elif status == TestItemStatus.Failed:
                 annotations[status].append(run_test_annotation)
                 if idx == new_result_idx:
                     for message in item['result']['message']:  # pyright: ignore
                         location = message['location']
                         if location:
-                            self.testitem_error_regions.setdefault(uri, []).append(range_to_region(location['range'], view))
-                            self.testitem_error_annotations.setdefault(uri, []).append(message['message'])
-            elif status == 'errored':
-                regions[status].append(testitem_region)
+                            self.testitem_error_regions.setdefault(path, []).append(range_to_region(location['range'], view))
+                            self.testitem_error_annotations.setdefault(path, []).append("<br>".join(html.escape(message['message']).split("\n")))
+            elif status == TestItemStatus.Errored:
                 annotations[status].append(run_test_annotation)
                 if idx == new_result_idx:
-                    self.testitem_error_regions.setdefault(uri, []).append(range_to_region(item['result']['message'][0]['location']['range'], view))  # pyright: ignore
-                    self.testitem_error_annotations.setdefault(uri, []).append(item['result']['message'][0]['message'])  # pyright: ignore
+                    self.testitem_error_regions.setdefault(path, []).append(range_to_region(item['result']['message'][0]['location']['range'], view))  # pyright: ignore
+                    error_message = "<br>".join(html.escape(item['result']['message'][0]['message']).split("\n"))  # pyright: ignore
+                    self.testitem_error_annotations.setdefault(path, []).append(error_message)
 
-        testitem_annotation_color = view.style_for_scope('region.cyanish markup.accent.testitem.lsp')['foreground']
-        error_annotation_color = view.style_for_scope('region.redish markup.error.testitem.lsp')['foreground']
-
-        for status in ('testitem', 'invalid', 'running', 'passed', 'failed', 'errored'):
+        for status in (TestItemStatus.Passed, TestItemStatus.Failed, TestItemStatus.Errored, TestItemStatus.Undetermined, TestItemStatus.Pending, TestItemStatus.Invalid):
             regions_key = 'lsp_julia_testitem_{}'.format(status)
             if regions[status]:
                 view.add_regions(
@@ -444,8 +466,8 @@ class JuliaLanguageServer(AbstractPlugin):
                     icon=TESTITEM_ICONS[status],
                     flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
                     annotations=annotations[status],
-                    annotation_color=error_annotation_color if status == 'invalid' else testitem_annotation_color,
-                    on_navigate=self._run_testitem if status in ('testitem', 'passed', 'failed', 'errored') else None)
+                    annotation_color=view.style_for_scope(TESTITEM_SCOPES[status])['foreground'],
+                    on_navigate=None if status in (TestItemStatus.Pending, TestItemStatus.Invalid) else self._run_testitem)
             else:
                 view.erase_regions(regions_key)
 
@@ -460,15 +482,14 @@ class JuliaLanguageServer(AbstractPlugin):
         if not view:
             return
         regions_key = 'lsp_julia_testitem_error_location'
-        regions = self.testitem_error_regions.get(uri)
+        regions = self.testitem_error_regions.get(path)
         if regions:
-            error_annotation_color = view.style_for_scope('region.redish markup.error.testitem.lsp')['foreground']
             view.add_regions(
                 regions_key,
                 regions,
                 flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
-                annotations=self.testitem_error_annotations[uri],
-                annotation_color=error_annotation_color,
+                annotations=self.testitem_error_annotations[path],
+                annotation_color=view.style_for_scope(TESTITEM_SCOPES[TestItemStatus.Errored])['foreground'],
                 on_close=lambda: self._hide_annotations(uri))
         else:
             view.erase_regions(regions_key)
@@ -477,8 +498,9 @@ class JuliaLanguageServer(AbstractPlugin):
         # TODO this will close all annotations if the close button of any of them is clicked.
         # We probably need to use a unique region key per annotation in order to make it possible
         # to close annotations one by one.
-        self.testitem_error_regions[uri] = []
-        self.testitem_error_annotations[uri] = []
+        path = parse_uri(uri)[1]
+        self.testitem_error_regions[path] = []
+        self.testitem_error_annotations[path] = []
         self._render_error_locations(uri)
 
     def _run_testitem(self, href: str) -> None:
@@ -490,15 +512,15 @@ class JuliaLanguageServer(AbstractPlugin):
         pq = parse_qs(fragment)
         idx = int(pq['idx'][0])
         version = int(pq['version'][0])
-
-        testitemparams = self.testitems.get(uri)
+        path = parse_uri(uri)[1]
+        testitemparams = self.testitems.get(path)
         if not testitemparams:
             return
         if version != testitemparams['version']:
             return
-        self.testitems[uri]['testitemdetails'][idx]['status'] = 'running'
-        self.testitem_error_regions[uri] = []
-        self.testitem_error_annotations[uri] = []
+        self.testitems[path]['testitemdetails'][idx]['status'] = TestItemStatus.Pending
+        self.testitem_error_regions[path] = []
+        self.testitem_error_annotations[path] = []
         self._render_testitems(uri)
         self._render_error_locations(uri)
 
@@ -558,7 +580,8 @@ class JuliaLanguageServer(AbstractPlugin):
                 sublime.set_timeout(partial(self._on_testitem_result, uri, idx, version, result))
             except Exception:
                 self.testitem_in_progress = False
-                self.testitems[uri]['testitemdetails'][idx]['error'] = "An error occured while trying to run this testitem.<br>Please check the console and consider to open an issue report in the LSP-julia GitHub repo."
+                path = parse_uri(uri)[1]
+                self.testitems[path]['testitemdetails'][idx]['error'] = "The test process crashed while running this testitem.<br>Please check the console and consider to create an issue report in the LSP-julia GitHub repo."
                 traceback.print_exc()
                 sublime.set_timeout(partial(self._render_testitems, uri))
 
@@ -577,22 +600,26 @@ class JuliaLanguageServer(AbstractPlugin):
         result: TestserverRunTestitemRequestParamsReturn
     ) -> None:
         self.testitem_in_progress = False
-        params = self.testitems.get(uri)
+        path = parse_uri(uri)[1]
+        params = self.testitems.get(path)
         if not params:
             return
         # reject result if the language server has updated the testitems in the file
         # (i.e. if there were changes in the meantime)
         if version != params['version']:
             return
-        self.testitems[uri]['testitemdetails'][idx]['status'] = result['status']
-        self.testitems[uri]['testitemdetails'][idx]['result'] = result
+        self.testitems[path]['testitemdetails'][idx]['status'] = result['status']
+        self.testitems[path]['testitemdetails'][idx]['result'] = result
         self._render_testitems(uri, idx)
         self._render_error_locations(uri)
 
     def m_julia_publishTestitems(self, params: PublishTestItemsParams) -> None:
         if params:
             uri = params['uri']
-            self.testitems[uri] = params
+            path = parse_uri(uri)[1]
+            # Use the filepath instead of the URI as the key for storing the testitems, because on Windows the language
+            # server sometimes uses uppercase and sometimes lowercase drive letters in the URI for the same file
+            self.testitems[path] = params
             self._render_testitems(uri)
 
 
@@ -645,9 +672,6 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     Used by JuliaActivateEnvironmentCommand to display the available Julia project environments the user can choose from.
     """
 
-    KIND_DEFAULT_ENVIRONMENT = (sublime.KIND_ID_COLOR_YELLOWISH, "d", "default environment")
-    KIND_WORKSPACE_FOLDER = (sublime.KIND_ID_COLOR_PURPLISH, "f", "workspace folder")
-
     def __init__(self, workspace_folders: List[WorkspaceFolder]) -> None:
         self.workspace_folders = workspace_folders
 
@@ -656,11 +680,11 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         julia_env_home = os.path.expanduser(os.path.join("~", ".julia", "environments"))
         names = [env for env in reversed(os.listdir(julia_env_home)) if os.path.isdir(os.path.join(julia_env_home, env))]  # collect all folder names in .julia/environments
         paths = [os.path.join(julia_env_home, env) for env in names]  # the corresponding folder paths
-        items = [sublime.ListInputItem(name, path, kind=self.KIND_DEFAULT_ENVIRONMENT) for name, path in zip(names, paths)]
+        items = [sublime.ListInputItem(name, path, kind=KIND_DEFAULT_ENVIRONMENT) for name, path in zip(names, paths)]
         # add workspace folders on top of the list if they are valid Julia project environments
         for workspace_folder in reversed(self.workspace_folders):
             if workspace_folder.path not in paths and is_julia_environment(workspace_folder.path):
-                items.insert(0, sublime.ListInputItem(workspace_folder.name, workspace_folder.path, kind=self.KIND_WORKSPACE_FOLDER))
+                items.insert(0, sublime.ListInputItem(workspace_folder.name, workspace_folder.path, kind=KIND_WORKSPACE_FOLDER))
         # add option for folder picker dialog
         items.insert(0, sublime.ListInputItem("(pick a folder…)", "__select_folder_dialog"))
         return items
@@ -1000,3 +1024,31 @@ class JuliaShowDocumentationCommand(LspTextCommand):
         window = self.view.window()
         if window:
             window.run_command("julia_search_documentation", {"word": word})
+
+
+# class JuliaRunTestitemCommand(LspWindowCommand):
+
+#     session_name = SESSION_NAME
+
+#     def run(self) -> None:
+#         session = self.session()
+#         if not session:
+#             return
+#         items = [sublime.QuickPanelItem(testitem['label'], annotation=parse_uri(testitem_params['uri'])[1], kind=TESTITEM_KINDS.get(testitem.get('status'), sublime.KIND_AMBIGUOUS))
+#                     for testitem_params in session._plugin.testitems.values()  # pyright: ignore
+#                     for testitem in testitem_params['testitemdetails']
+#                     if testitem.get('status', TestItemStatus.Undetermined) in (TestItemStatus.Passed, TestItemStatus.Failed, TestItemStatus.Errored, TestItemStatus.Undetermined)]
+#         session.window.show_quick_panel(items, on_select=self._on_select)
+
+
+#     def is_enabled(self) -> bool:
+#         session = self.session()
+#         if session is None:
+#             return False
+#         return any(testitem for testitem_params in session._plugin.testitems.values()  # pyright: ignore
+#                    for testitem in testitem_params['testitemdetails']
+#                    if testitem.get('status', TestItemStatus.Undetermined) in (TestItemStatus.Passed, TestItemStatus.Failed, TestItemStatus.Errored, TestItemStatus.Undetermined)) and \
+#             not session._plugin.testitem_in_progress  # pyright: ignore
+
+#     def _on_select(self, idx: int) -> None:
+#         pass
