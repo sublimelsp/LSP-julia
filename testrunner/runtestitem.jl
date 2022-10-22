@@ -238,16 +238,16 @@ end
 #==========================================================================================#
 
 params_dict = JSON.parse(ARGS[1])
+package_name = params_dict["packageName"]
 project_path = params_dict["project_path"]
 package_path = params_dict["package_path"]
-package_name = params_dict["package_name"]
 
 params = TestserverRunTestitemRequestParams(
     params_dict["uri"],
     params_dict["name"],
-    params_dict["packageName"],
+    package_name,
     params_dict["useDefaultUsings"],
-    max(0, params_dict["line"] - 1),  # lines are off by one for some reason ... subtract 1 to correct it
+    params_dict["line"],
     params_dict["column"],
     params_dict["code"]
 )
