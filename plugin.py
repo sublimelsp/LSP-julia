@@ -121,8 +121,8 @@ KIND_DEFAULT_ENVIRONMENT = (sublime.KIND_ID_COLOR_YELLOWISH, "d", "Default Envir
 KIND_WORKSPACE_FOLDER = (sublime.KIND_ID_COLOR_PURPLISH, "f", "Workspace Folder")
 
 TESTITEM_ICONS = {
-    TestItemStatus.Passed: 'Packages/LSP-julia/icons/success.png',
-    TestItemStatus.Failed: 'Packages/LSP-julia/icons/failure.png',
+    TestItemStatus.Passed: 'Packages/LSP-julia/icons/passed.png',
+    TestItemStatus.Failed: 'Packages/LSP-julia/icons/failed.png',
     TestItemStatus.Errored: 'Packages/LSP/icons/error.png',
     TestItemStatus.Undetermined: '',
     TestItemStatus.Pending: 'Packages/LSP-julia/icons/stopwatch.png',
