@@ -10,6 +10,7 @@ from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.core.protocol import DocumentUri, Location, Point, Position, Range, TextDocumentIdentifier
 from LSP.plugin.core.typing import Any, Dict, List, NotRequired, Optional, Set, TypedDict, Union
+from LSP.plugin.core.typing import cast
 from LSP.plugin.core.url import parse_uri
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import range_to_region
@@ -112,9 +113,9 @@ class TestItemStatus:
 
 
 # sublime.Kind tuples for the "Run Testitem" QuickPanelItems
-KIND_PASSED = (sublime.KIND_ID_COLOR_GREENISH, "p", "Passed")
-KIND_FAILED = (sublime.KIND_ID_COLOR_REDISH, "f", "Failed")
-KIND_ERRORED = (sublime.KIND_ID_COLOR_REDISH, "e", "Errored")
+KIND_PASSED = (sublime.KIND_ID_COLOR_GREENISH, "✓", "Passed")
+KIND_FAILED = (sublime.KIND_ID_COLOR_REDISH, "✗", "Failed")
+KIND_ERRORED = (sublime.KIND_ID_COLOR_REDISH, "✗", "Errored")
 
 # sublime.Kind tuples for the "Change Current Environment" QuickPanelItems
 KIND_DEFAULT_ENVIRONMENT = (sublime.KIND_ID_COLOR_YELLOWISH, "d", "Default Environment")
@@ -349,7 +350,7 @@ class TestItemStorage:
     def render_testitems(self, uri: DocumentUri, new_result_idx: Optional[int] = None) -> None:
         filepath = parse_uri(uri)[1]
         view = self.window.find_open_file(filepath)  # This doesn't work if the tab was dragged out of the window...
-        if view:
+        if view and not view.is_loading():
             regions = {
                 TestItemStatus.Passed: [],
                 TestItemStatus.Failed: [],
@@ -455,14 +456,14 @@ class TestItemStorage:
             'name': testitem['label'],
             'packageName': params['package_name'],
             'useDefaultUsings': testitem.get('option_default_imports') is not False,
-            'line': code_range['start']['line'] - 1,
+            'line': max(code_range['start']['line'] - 1, 0),  # Lines are off by one for some reason...
             'column': code_range['start']['character'],
             'code': code,
             'project_path': params['project_path'],
             'package_path': params['package_path']
         }
 
-    def run_testitem(self, href: str) -> None:
+    def run_testitem(self, href: str, focus_testitem: bool = False) -> None:
         if self.pending_result:
             self.window.status_message("Another testitem is already running")
             return
@@ -471,7 +472,9 @@ class TestItemStorage:
         pq = parse_qs(fragment)
         idx = int(pq['idx'][0])
         version = int(pq['version'][0])
-        if version != self.stored_version(uri):  # Actually this should never happen in practice, because annotations for the corresponding view are redrawn on each julia/publishTestitems notification
+        if version != self.stored_version(uri):
+            # Actually this should never happen in practice, because annotations for the corresponding view are redrawn
+            # on each julia/publishTestitems notification.
             self.window.status_message("Version mismatch for testitem params")
             return
         params = self.run_testitem_request_params(uri, idx)
@@ -480,6 +483,14 @@ class TestItemStorage:
             self.testitemstatus[filepath][idx]['status'] = TestItemStatus.Pending
             thread = threading.Thread(target=self.run_testitem_daemon_thread, args=(uri, idx, version, params), daemon=True)
             thread.start()
+            if focus_testitem:
+                view = self.window.open_file("{}:{}".format(filepath, params['line'] + 1), flags=sublime.ENCODED_POSITION)
+                # In case the file wasn't open before and is still loading, add a small delay before drawing the
+                # annotations.
+                if view.is_loading():
+                    sublime.set_timeout(partial(self.render_testitems, uri), 50)
+                    sublime.set_timeout(partial(self.clear_error_annotations, uri, params['name']), 50)
+                    return
             self.render_testitems(uri)
             self.clear_error_annotations(uri, params['name'])
 
@@ -1053,29 +1064,40 @@ class JuliaShowDocumentationCommand(LspTextCommand):
             window.run_command("julia_search_documentation", {"word": word})
 
 
-# class JuliaRunTestitemCommand(LspWindowCommand):
+class JuliaRunTestitemCommand(LspWindowCommand):
 
-#     session_name = SESSION_NAME
+    session_name = SESSION_NAME
 
-#     def run(self) -> None:
-#         session = self.session()
-#         if not session:
-#             return
-#         items = [sublime.QuickPanelItem(testitem['label'], annotation=parse_uri(testitem_params['uri'])[1], kind=TESTITEM_KINDS.get(testitem.get('status'), sublime.KIND_AMBIGUOUS))
-#                     for testitem_params in session._plugin.testitems.values()  # pyright: ignore
-#                     for testitem in testitem_params['testitemdetails']
-#                     if testitem.get('status', TestItemStatus.Undetermined) in (TestItemStatus.Passed, TestItemStatus.Failed, TestItemStatus.Errored, TestItemStatus.Undetermined)]
-#         session.window.show_quick_panel(items, on_select=self._on_select)
+    def run(self) -> None:
+        session = self.session()
+        if not session:
+            return
+        plugin = cast(JuliaLanguageServer, session._plugin)
+        items = []  # type: List[sublime.QuickPanelItem]
+        self.hrefs = []  # type: List[str]
+        for filepath, details in plugin.testitems.testitemdetails.items():
+            for idx, testitem in enumerate(details):
+                if not testitem.get('error'):
+                    status = plugin.testitems.testitemstatus[filepath][idx]['status']
+                    kind = TESTITEM_KINDS.get(status, sublime.KIND_AMBIGUOUS)
+                    items.append(sublime.QuickPanelItem(testitem['label'], annotation=filepath, kind=kind))
+                    uri = plugin.testitems.testitemparams[filepath]['uri']
+                    version = plugin.testitems.testitemparams[filepath]['version']
+                    self.hrefs.append("{}#idx={}&amp;version={}".format(uri, idx, version))
+        session.window.show_quick_panel(items, on_select=partial(self._on_select, plugin))
 
+    def is_enabled(self) -> bool:
+        session = self.session()
+        if session is None:
+            return False
+        plugin = cast(JuliaLanguageServer, session._plugin)
+        if plugin.testitems.pending_result:
+            return False
+        return any(testitem for testitems in plugin.testitems.testitemdetails.values()
+                   for testitem in testitems
+                   if not testitem.get('error'))
 
-#     def is_enabled(self) -> bool:
-#         session = self.session()
-#         if session is None:
-#             return False
-#         return any(testitem for testitem_params in session._plugin.testitems.values()  # pyright: ignore
-#                    for testitem in testitem_params['testitemdetails']
-#                    if testitem.get('status', TestItemStatus.Undetermined) in (TestItemStatus.Passed, TestItemStatus.Failed, TestItemStatus.Errored, TestItemStatus.Undetermined)) and \
-#             not session._plugin.testitem_in_progress  # pyright: ignore
-
-#     def _on_select(self, idx: int) -> None:
-#         pass
+    def _on_select(self, plugin: JuliaLanguageServer, idx: int) -> None:
+        if idx > -1:
+            href = self.hrefs[idx]
+            plugin.testitems.run_testitem(href, focus_testitem=True)
