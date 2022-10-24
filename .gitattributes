@@ -2,4 +2,5 @@
 pyproject.toml export-ignore
 /icons/*.svg export-ignore
 /icons/convert.bat export-ignore
+/img export-ignore
 sublime-package.json linguist-language=jsonc

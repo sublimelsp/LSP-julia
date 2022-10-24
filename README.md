@@ -29,8 +29,29 @@ LSP-julia provides additional commands which are available from the command pale
 | LSP-julia: Select Code Block | none | Select the function or code block at the current cursor position. For multiple active cursors, only the topmost cursor position is taken into account. |
 | LSP-julia: Run Code Block<sup>1</sup> | <kbd>Alt</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code block containing the current cursor position and move curser to the next block. |
 | LSP-julia: Run Code Cell<sup>1</sup> | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code cell containing the current cursor position and move curser to the next cell. Code cells are signalized with a specially formatted comment at the start of a line: `##`, `#%%` or `# %%`. |
+| LSP-julia: Run Testitem | none | Show a quick panel with all available `@testitem`s in Julia files (see description below). |
 
 Commands marked with a <sup>1</sup> are only available if you have the Terminus package installed.
 
 To add or adjust key bindings for the commands, edit the `.sublime-keymap` file for your OS in your `Packages/User` folder.
 For an example refer to the [Default.sublime-keymap](Default.sublime-keymap) file in this repository, and for the command names from this package see [LSP-julia.sublime-commands](LSP-julia.sublime-commands).
+
+### Run individual Testitems
+
+LSP-julia has a custom feature which allows to run a particular testset from a Julia package directly from the editor UI.
+
+For this to work, the tests must be contained within a `@testitem` block. For an example see the screenshot below or read the detailed description at https://github.com/julia-vscode/TestItemRunner.jl#writing-tests.
+
+A `@testitem` can be run via the "Run Test" link shown in an annotation on the righthand side of the editor, or via the "LSP-julia: Run Testitem" command from the command palette.
+Possible test failures or errors will be shown as annotations at the place in the code where they occured.
+
+To completely disable this feature, you can adjust the following entry in the *LSP-julia.sublime-settings* file:
+```json
+{
+  "initializationOptions": {
+    "julialangTestItemIdentification": false
+  }
+}
+```
+
+![Testitem preview](img/testitem.png)
