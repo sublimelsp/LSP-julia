@@ -36,6 +36,7 @@ import threading
 
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
+# https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
 VersionedTextDocumentPositionParams = TypedDict('VersionedTextDocumentPositionParams', {
     'textDocument': TextDocumentIdentifier,
     'version': int,
@@ -44,7 +45,6 @@ VersionedTextDocumentPositionParams = TypedDict('VersionedTextDocumentPositionPa
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/testing/testFeature.ts
 # https://github.com/julia-vscode/julia-vscode/blob/main/scripts/packages/VSCodeTestServer/src/testserver_protocol.jl
-# https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
 TestserverRunTestitemRequestParams = TypedDict('TestserverRunTestitemRequestParams', {
     'uri': str,
     'name': str,
@@ -202,11 +202,6 @@ def send_julia_repl(window: sublime.Window, code_block: str) -> None:
 
 
 def versioned_text_document_position_params(view: sublime.View, location: int) -> VersionedTextDocumentPositionParams:
-    """
-    Custom Julia-specific extension to the LSP.
-
-    https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
-    """
     position_params = text_document_position_params(view, location)
     return {
         "textDocument": position_params["textDocument"],
@@ -498,13 +493,13 @@ class TestItemStorage:
         try:
             params_json = json.dumps(params, separators=(',', ':'))
             result_json = subprocess.check_output([
-                JuliaLanguageServer.julia_exe(),
+                LspJuliaPlugin.julia_exe(),
                 "--startup-file=no",
                 "--history-file=no",
-                "--project={}".format(JuliaLanguageServer.testrunnerdir()),
+                "--project={}".format(LspJuliaPlugin.testrunnerdir()),
                 "runtestitem.jl",
                 params_json
-            ], cwd=JuliaLanguageServer.testrunnerdir(), startupinfo=startupinfo()).decode("utf-8")
+            ], cwd=LspJuliaPlugin.testrunnerdir(), startupinfo=startupinfo()).decode("utf-8")
             result = json.loads(result_json)
             sublime.set_timeout(partial(self.on_result, uri, idx, version, result))
         except Exception:
@@ -526,7 +521,7 @@ class TestItemStorage:
         self.render_testitems(uri, idx)
 
 
-class JuliaLanguageServer(AbstractPlugin):
+class LspJuliaPlugin(AbstractPlugin):
 
     def __init__(self, weaksession) -> None:
         super().__init__(weaksession)
@@ -535,7 +530,7 @@ class JuliaLanguageServer(AbstractPlugin):
             session = self.weaksession()
             if session:
                 env_name = os.path.basename(session.working_directory) if session.working_directory else \
-                    JuliaLanguageServer.default_julia_environment()
+                    LspJuliaPlugin.default_julia_environment()
                 session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
 
     @classmethod
@@ -662,11 +657,11 @@ class JuliaLanguageServer(AbstractPlugin):
 
 
 def plugin_loaded() -> None:
-    register_plugin(JuliaLanguageServer)
+    register_plugin(LspJuliaPlugin)
 
 
 def plugin_unloaded() -> None:
-    unregister_plugin(JuliaLanguageServer)
+    unregister_plugin(LspJuliaPlugin)
 
 
 class JuliaActivateEnvironmentCommand(LspWindowCommand):
@@ -1072,7 +1067,7 @@ class JuliaRunTestitemCommand(LspWindowCommand):
         session = self.session()
         if not session:
             return
-        plugin = cast(JuliaLanguageServer, session._plugin)
+        plugin = cast(LspJuliaPlugin, session._plugin)
         items = []  # type: List[sublime.QuickPanelItem]
         self.hrefs = []  # type: List[str]
         for filepath, details in plugin.testitems.testitemdetails.items():
@@ -1090,14 +1085,14 @@ class JuliaRunTestitemCommand(LspWindowCommand):
         session = self.session()
         if session is None:
             return False
-        plugin = cast(JuliaLanguageServer, session._plugin)
+        plugin = cast(LspJuliaPlugin, session._plugin)
         if plugin.testitems.pending_result:
             return False
         return any(testitem for testitems in plugin.testitems.testitemdetails.values()
                    for testitem in testitems
                    if not testitem.get('error'))
 
-    def _on_select(self, plugin: JuliaLanguageServer, idx: int) -> None:
+    def _on_select(self, plugin: LspJuliaPlugin, idx: int) -> None:
         if idx > -1:
             href = self.hrefs[idx]
             plugin.testitems.run_testitem(href, focus_testitem=True)

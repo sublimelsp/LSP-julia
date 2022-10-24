@@ -32,7 +32,7 @@ struct TestserverRunTestitemRequestParams
 end
 
 #==========================================================================================#
-# Adjusted functions extracted from VSCodeTestServer.jl
+# Functions extracted from VSCodeTestServer.jl
 # Keep in sync with https://github.com/julia-vscode/julia-vscode/blob/main/scripts/packages/VSCodeTestServer/src/VSCodeTestServer.jl
 
 function uri2filepath(uri::AbstractString)
