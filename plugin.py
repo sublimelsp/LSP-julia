@@ -112,9 +112,9 @@ class TestItemStatus:
 
 
 # sublime.Kind tuples for the "Run Testitem" QuickPanelItems
-KIND_TESTITEM_PASSED = (sublime.KIND_ID_COLOR_GREENISH, "p", "Passed")
-KIND_TESTITEM_FAILED = (sublime.KIND_ID_COLOR_REDISH, "f", "Failed")
-KIND_TESTITEM_ERRORED = (sublime.KIND_ID_COLOR_REDISH, "e", "Errored")
+KIND_PASSED = (sublime.KIND_ID_COLOR_GREENISH, "p", "Passed")
+KIND_FAILED = (sublime.KIND_ID_COLOR_REDISH, "f", "Failed")
+KIND_ERRORED = (sublime.KIND_ID_COLOR_REDISH, "e", "Errored")
 
 # sublime.Kind tuples for the "Change Current Environment" QuickPanelItems
 KIND_DEFAULT_ENVIRONMENT = (sublime.KIND_ID_COLOR_YELLOWISH, "d", "Default Environment")
@@ -139,9 +139,9 @@ TESTITEM_SCOPES = {
 }
 
 TESTITEM_KINDS = {
-    TestItemStatus.Passed: KIND_TESTITEM_PASSED,
-    TestItemStatus.Failed: KIND_TESTITEM_FAILED,
-    TestItemStatus.Errored: KIND_TESTITEM_ERRORED
+    TestItemStatus.Passed: KIND_PASSED,
+    TestItemStatus.Failed: KIND_FAILED,
+    TestItemStatus.Errored: KIND_ERRORED
 }
 
 SUBLIME_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
@@ -258,10 +258,10 @@ def prepare_markdown(content: str) -> str:
 
 def startupinfo():
     if sublime.platform() == "windows":
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = 11
-        return startupinfo
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = 11
+        return si
     return None
 
 
@@ -277,22 +277,60 @@ class TestItemStorage:
 
     def update(self, uri: DocumentUri, params: PublishTestItemsParams) -> None:
         # Use the filepath instead of the URI as the key for storing the testitems, because on Windows the language
-        # server sometimes uses uppercase and sometimes lowercase drive letters in the URI for the same file
+        # server sometimes uses uppercase and sometimes lowercase drive letters in the URI for the same file.
         filepath = parse_uri(uri)[1]
-        self.testitemparams[filepath] = {
-            'uri': params['uri'],
-            'version': params.get('version', 0),
-            'project_path': params['project_path'],
-            'package_path': params['package_path'],
-            'package_name': params['package_name']
-        }
         details = params['testitemdetails']
-        self.testitemdetails[filepath] = details
-        self.testitemstatus[filepath] = [{
+        old_params = self.testitemparams.get(filepath)
+        if not details:
+            # If there are no testitems reported, just delete the key for the previously stored items if they existed.
+            if old_params:
+                del self.testitemparams[filepath]
+                del self.testitemdetails[filepath]
+                del self.testitemstatus[filepath]
+                self.render_testitems(uri)
+            return
+        if not old_params or \
+            any(old_params[key] != params[key] for key in ('project_path', 'package_path', 'package_name')):
+            # If there were no testitems for this file already stored, or one of the major parameters changed, copy the
+            # new parameters and testitems.
+            self.testitemparams[filepath] = {
+                'uri': params['uri'],
+                'version': params.get('version', 0),
+                'project_path': params['project_path'],
+                'package_path': params['package_path'],
+                'package_name': params['package_name']
+            }
+            self.testitemdetails[filepath] = details
+            self.testitemstatus[filepath] = [{
                 'status': TestItemStatus.Invalid if testitem['error'] else TestItemStatus.Undetermined,
                 'message': None,
                 'duration': None
             } for testitem in details]
+        else:
+            # If there are both new and old testitems, compare them and determine the unchanged items so that the old
+            # status can be retained. An old and a new testitem is considered the same if it has the same "id".
+            # Unfortunately the "id" field for the testitems is not necessarily unique, so there might be incorrect
+            # matches via this approach. Perhaps it should be considered as an additional requirement that the "code"
+            # property must also be the same (that would mean that testitems lose their status whenever there are
+            # changes in the particular testitem code)...
+            self.testitemparams[filepath]['uri'] = params['uri']
+            self.testitemparams[filepath]['version'] = \
+                params.get('version', self.testitemparams[filepath]['version'] + 1)
+            status = [{
+                'status': TestItemStatus.Invalid if testitem['error'] else TestItemStatus.Undetermined,
+                'message': None,
+                'duration': None
+            } for testitem in details]  # type: List[TestserverRunTestitemRequestParamsReturn]
+            for old_idx, old_item in enumerate(self.testitemdetails[filepath]):
+                for new_idx, new_item in enumerate(details):
+                    if new_item.get('error'):
+                        continue
+                    if old_item['id'] == new_item['id']:
+                        # Copy old status into new status for this testitem
+                        status[new_idx] = self.testitemstatus[filepath][old_idx]
+                        break
+            self.testitemdetails[filepath] = details
+            self.testitemstatus[filepath] = status
         self.render_testitems(uri)
 
     def stored_version(self, uri: DocumentUri) -> Optional[int]:
@@ -320,6 +358,10 @@ class TestItemStorage:
                 TestItemStatus.Pending: [],
                 TestItemStatus.Invalid: []
             }  # type: Dict[str, List[sublime.Region]]
+            if filepath not in self.testitemdetails:
+                for status in regions.keys():
+                    view.erase_regions('lsp_julia_testitem_{}'.format(status))
+                return
             annotations = {
                 TestItemStatus.Passed: [],
                 TestItemStatus.Failed: [],
@@ -365,7 +407,7 @@ class TestItemStorage:
                                     annotation_color=error_annotation_color,
                                     on_close=partial(self.hide_annotation, uri, regions_key))
                                 self.error_keys[filepath].add(regions_key)
-            for status in (TestItemStatus.Passed, TestItemStatus.Failed, TestItemStatus.Errored, TestItemStatus.Undetermined, TestItemStatus.Pending, TestItemStatus.Invalid):
+            for status in regions.keys():
                 regions_key = 'lsp_julia_testitem_{}'.format(status)
                 if regions[status]:
                     view.add_regions(
@@ -412,7 +454,7 @@ class TestItemStorage:
             'uri': params['uri'],
             'name': testitem['label'],
             'packageName': params['package_name'],
-            'useDefaultUsings': testitem['option_default_imports'] is not False,
+            'useDefaultUsings': testitem.get('option_default_imports') is not False,
             'line': code_range['start']['line'] - 1,
             'column': code_range['start']['character'],
             'code': code,
@@ -619,7 +661,7 @@ def plugin_unloaded() -> None:
 class JuliaActivateEnvironmentCommand(LspWindowCommand):
     """
     Can be invoked from the command palette to switch the active Julia project environment.
-    The active Julia project environment detemines the Julia packages used by the language server to provide
+    The active Julia project environment determines the Julia packages used by the language server to provide
     autocomplete suggestions and diagnostics.
     """
 
