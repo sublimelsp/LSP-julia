@@ -285,6 +285,11 @@ class TestItemStorage:
                 del self.testitemstatus[filepath]
                 self.render_testitems(uri)
             return
+        status = [{
+            'status': TestItemStatus.Invalid if testitem.get('error') else TestItemStatus.Undetermined,
+            'message': None,
+            'duration': None
+        } for testitem in details]  # type: List[TestserverRunTestitemRequestParamsReturn]
         if not old_params or \
             any(old_params[key] != params[key] for key in ('project_path', 'package_path', 'package_name')):
             # If there were no testitems for this file already stored, or one of the major parameters changed, copy the
@@ -296,12 +301,6 @@ class TestItemStorage:
                 'package_path': params['package_path'],
                 'package_name': params['package_name']
             }
-            self.testitemdetails[filepath] = details
-            self.testitemstatus[filepath] = [{
-                'status': TestItemStatus.Invalid if testitem['error'] else TestItemStatus.Undetermined,
-                'message': None,
-                'duration': None
-            } for testitem in details]
         else:
             # If there are both new and old testitems, compare them and determine the unchanged items so that the old
             # status can be retained. An old and a new testitem is considered the same if it has the same "id".
@@ -312,11 +311,6 @@ class TestItemStorage:
             self.testitemparams[filepath]['uri'] = params['uri']
             self.testitemparams[filepath]['version'] = \
                 params.get('version', self.testitemparams[filepath]['version'] + 1)
-            status = [{
-                'status': TestItemStatus.Invalid if testitem['error'] else TestItemStatus.Undetermined,
-                'message': None,
-                'duration': None
-            } for testitem in details]  # type: List[TestserverRunTestitemRequestParamsReturn]
             for old_idx, old_item in enumerate(self.testitemdetails[filepath]):
                 for new_idx, new_item in enumerate(details):
                     if new_item.get('error'):
@@ -325,8 +319,8 @@ class TestItemStorage:
                         # Copy old status into new status for this testitem
                         status[new_idx] = self.testitemstatus[filepath][old_idx]
                         break
-            self.testitemdetails[filepath] = details
-            self.testitemstatus[filepath] = status
+        self.testitemdetails[filepath] = details
+        self.testitemstatus[filepath] = status
         self.render_testitems(uri)
 
     def stored_version(self, uri: DocumentUri) -> Optional[int]:
@@ -335,12 +329,6 @@ class TestItemStorage:
         if params:
             return params['version']
         return None
-
-    def set_status(self, uri: DocumentUri, idx: int, status: str) -> None:
-        filepath = parse_uri(uri)[1]
-        if filepath not in self.testitemstatus:
-            return
-        self.testitemstatus[filepath][idx]['status'] = status
 
     def render_testitems(self, uri: DocumentUri, new_result_idx: Optional[int] = None) -> None:
         filepath = parse_uri(uri)[1]
@@ -513,12 +501,17 @@ class TestItemStorage:
     def on_result(self, uri: DocumentUri, idx: int, version: int, params: TestserverRunTestitemRequestParamsReturn) -> None:
         self.pending_result = False
         filepath = parse_uri(uri)[1]
-        # Reject result if the language server has notified about a new version of testitems for this file in the
-        # meantime
-        if self.testitemparams[filepath]['version'] != version:
-            return
-        self.testitemstatus[filepath][idx] = params
-        self.render_testitems(uri, idx)
+        if self.testitemparams[filepath]['version'] == version:
+            self.testitemstatus[filepath][idx] = params
+            self.render_testitems(uri, idx)
+        else:
+            # Ignore result if the language server has notified about a new version of testitems for this file in the
+            # meantime. The index of the stored testitem might have changed! Search through all testitems for an item
+            # with "pending" status and reset status if found. Don't draw new error annotations.
+            for idx, status in enumerate(self.testitemstatus[filepath]):
+                if status['status'] == TestItemStatus.Pending:
+                    self.testitemstatus[filepath][idx]['status'] = TestItemStatus.Undetermined
+            self.render_testitems(uri)
 
 
 class LspJuliaPlugin(AbstractPlugin):
