@@ -434,13 +434,17 @@ class TestItemStorage:
         code = testitem.get('code')
         if not code:
             return None
+        line = code_range['start']['line']
+        column = code_range['start']['character']
+        if column == 0:
+            line -= 1  # Fix missmatch of start position between initial and subsequent reported testitem notifications
         return {
             'uri': params['uri'],
             'name': testitem['label'],
             'packageName': params['package_name'],
             'useDefaultUsings': testitem.get('option_default_imports') is not False,
-            'line': max(code_range['start']['line'] - 1, 0),  # Lines are off by one for some reason...
-            'column': code_range['start']['character'],
+            'line': line,
+            'column': column,
             'code': code,
             'project_path': params['project_path'],
             'package_path': params['package_path']
