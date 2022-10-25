@@ -1068,11 +1068,13 @@ class JuliaRunTestitemCommand(LspWindowCommand):
                 if not testitem.get('error'):
                     status = plugin.testitems.testitemstatus[filepath][idx]['status']
                     kind = TESTITEM_KINDS.get(status, sublime.KIND_AMBIGUOUS)
-                    items.append(sublime.QuickPanelItem(testitem['label'], annotation=filepath, kind=kind))
+                    details = ", ".join(testitem.get('option_tags') or [])
+                    items.append(
+                        sublime.QuickPanelItem(testitem['label'], details=details, annotation=filepath, kind=kind))
                     uri = plugin.testitems.testitemparams[filepath]['uri']
                     version = plugin.testitems.testitemparams[filepath]['version']
                     self.hrefs.append("{}#idx={}&amp;version={}".format(uri, idx, version))
-        session.window.show_quick_panel(items, on_select=partial(self._on_select, plugin))
+        session.window.show_quick_panel(items, on_select=partial(self._on_select, plugin), placeholder="Run @testitem")
 
     def is_enabled(self) -> bool:
         session = self.session()
