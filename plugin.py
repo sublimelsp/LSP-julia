@@ -483,15 +483,16 @@ class TestItemStorage:
 
     def run_testitem_daemon_thread(self, uri: DocumentUri, idx: int, version: int, params: TestserverRunTestitemRequestExtendedParams) -> None:
         try:
+            file_directory = os.path.dirname(parse_uri(params['uri'])[1])
             params_json = json.dumps(params, separators=(',', ':'))
             result_json = subprocess.check_output([
                 LspJuliaPlugin.julia_exe(),
                 "--startup-file=no",
                 "--history-file=no",
                 "--project={}".format(LspJuliaPlugin.testrunnerdir()),
-                "runtestitem.jl",
+                os.path.join(LspJuliaPlugin.testrunnerdir(), "runtestitem.jl"),
                 params_json
-            ], cwd=LspJuliaPlugin.testrunnerdir(), startupinfo=startupinfo()).decode("utf-8")
+            ], cwd=file_directory, startupinfo=startupinfo()).decode("utf-8")
             result = json.loads(result_json)
             sublime.set_timeout(partial(self.on_result, uri, idx, version, result))
         except Exception:
