@@ -36,16 +36,17 @@ Commands marked with a <sup>1</sup> are only available if you have the Terminus 
 To add or adjust key bindings for the commands, edit the `.sublime-keymap` file for your OS in your `Packages/User` folder.
 For an example refer to the [Default.sublime-keymap](Default.sublime-keymap) file in this repository, and for the command names from this package see [LSP-julia.sublime-commands](LSP-julia.sublime-commands).
 
-### Run individual Testitems
+### Run individual test items
 
-LSP-julia has a custom feature which allows to run a particular testset from a Julia package directly from the editor UI.
+LSP-julia has a custom feature, similar to the Julia extension for VS Code, which allows to run individual testsets from a Julia package directly from the editor UI.
 
-For this to work, the tests must be contained within a `@testitem` block. For an example see the screenshot below or read the detailed description at https://github.com/julia-vscode/TestItemRunner.jl#writing-tests.
+For this to work, the tests must be contained within a `@testitem` block, which is basically a replacement for `@testset`.
+For an example see the screenshot below or read the detailed description at https://github.com/julia-vscode/TestItemRunner.jl#writing-tests.
 
 A `@testitem` can be run via the "Run Test" link shown in an annotation on the righthand side of the editor, or via the "LSP-julia: Run Testitem" command from the command palette.
-Possible test failures or errors will be shown as annotations at the place in the code where they occured.
+Possible test failures or errors will be shown as annotations at the position in the code where they occured.
 
-To completely disable this feature, you can adjust the following entry in the *LSP-julia.sublime-settings* file:
+To completely disable this feature, you can toggle off the following entry in the *LSP-julia.sublime-settings* file:
 ```json
 {
   "initializationOptions": {
