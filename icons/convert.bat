@@ -1,0 +1,9 @@
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 16 -h 16 --export-filename=failed.png failed.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 32 -h 32 --export-filename=failed@2x.png failed.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 48 -h 48 --export-filename=failed@3x.png failed.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 16 -h 16 --export-filename=passed.png passed.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 32 -h 32 --export-filename=passed@2x.png passed.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 48 -h 48 --export-filename=passed@3x.png passed.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 16 -h 16 --export-filename=stopwatch.png stopwatch.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 32 -h 32 --export-filename=stopwatch@2x.png stopwatch.svg
+inkscape --export-type=png --export-area=-1.23:-1.23:18.46:18.46 -w 48 -h 48 --export-filename=stopwatch@3x.png stopwatch.svg

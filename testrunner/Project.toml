@@ -1,0 +1,7 @@
+[deps]
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestEnv = "1e6cf692-eddd-4d53-88a5-2d735e33781b"
+URIParser = "30578b45-9adc-5946-b283-645ec420af67"

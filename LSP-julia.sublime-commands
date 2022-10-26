@@ -37,4 +37,8 @@
         "caption": "LSP-julia: Run Code Cell",
         "command": "julia_run_code_cell"
     },
+    {
+        "caption": "LSP-julia: Run Testitem",
+        "command": "julia_run_testitem"
+    },
 ]
