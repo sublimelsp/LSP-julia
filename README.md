@@ -46,6 +46,9 @@ For an example see the screenshot below or read the detailed description at http
 A `@testitem` can be run via the "Run Test" link shown in an annotation on the righthand side of the editor, or via the "LSP-julia: Run Testitem" command from the command palette.
 Possible test failures or errors will be shown as annotations at the position in the code where they occured.
 
+> **Note**
+> The `@testitem` feature only works in [project environments](https://docs.julialang.org/en/v1/manual/code-loading/#Project-environments), i.e. you must have opened a folder in the sidebar which contains a *Project.toml* file with a `name` and `uuid` field.
+
 To completely disable this feature, you can toggle off the following entry in the *LSP-julia.sublime-settings* file:
 ```json
 {

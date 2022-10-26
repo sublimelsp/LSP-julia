@@ -434,6 +434,11 @@ class TestItemStorage:
         code = testitem.get('code')
         if not code:
             return None
+        project_path = params['project_path']
+        package_path = params['package_path']
+        package_name = params['package_name']
+        if not any([project_path, package_path, package_name]):
+            return None
         line = code_range['start']['line']
         column = code_range['start']['character']
         if column == 0:
@@ -441,13 +446,13 @@ class TestItemStorage:
         return {
             'uri': params['uri'],
             'name': testitem['label'],
-            'packageName': params['package_name'],
+            'packageName': package_name,
             'useDefaultUsings': testitem.get('option_default_imports') is not False,
             'line': line,
             'column': column,
             'code': code,
-            'project_path': params['project_path'],
-            'package_path': params['package_path']
+            'project_path': project_path,
+            'package_path': package_path
         }
 
     def run_testitem(self, href: str, focus_testitem: bool = False) -> None:
@@ -480,6 +485,8 @@ class TestItemStorage:
                     return
             self.render_testitems(uri)
             self.clear_error_annotations(uri, params['name'])
+        else:
+            self.window.status_message("Insufficient data to run the @testitem. Ensure you work in a Julia project environment with a Project.toml file.")
 
     def run_testitem_daemon_thread(self, uri: DocumentUri, idx: int, version: int, params: TestserverRunTestitemRequestExtendedParams) -> None:
         try:
