@@ -285,6 +285,9 @@ class TestItemStorage:
                 del self.testitemstatus[filepath]
                 self.render_testitems(uri)
             return
+        if not params['package_path']:
+            for testitem in details:
+                testitem['error'] = "Unable to identify a Julia package for this test item.<br>Ensure you work in a Julia project environment with a Project.toml file."
         status = [{
             'status': TestItemStatus.Invalid if testitem.get('error') else TestItemStatus.Undetermined,
             'message': None,
@@ -485,8 +488,6 @@ class TestItemStorage:
                     return
             self.render_testitems(uri)
             self.clear_error_annotations(uri, params['name'])
-        else:
-            self.window.status_message("Insufficient data to run the @testitem. Ensure you work in a Julia project environment with a Project.toml file.")
 
     def run_testitem_daemon_thread(self, uri: DocumentUri, idx: int, version: int, params: TestserverRunTestitemRequestExtendedParams) -> None:
         try:
