@@ -1081,7 +1081,7 @@ class JuliaRunTestitemCommand(LspWindowCommand):
                     status = plugin.testitems.testitemstatus[filepath][idx]['status']
                     kind = TESTITEM_KINDS.get(status, sublime.KIND_AMBIGUOUS)
                     details = ", ".join(testitem.get('option_tags') or [])
-                    location = "{}:{}".format(filepath, testitem['range']['start']['line'])
+                    location = "{}:{}".format(filepath, testitem['range']['start']['line'] + 1)
                     items.append(
                         sublime.QuickPanelItem(testitem['label'], details=details, annotation=location, kind=kind))
                     uri = plugin.testitems.testitemparams[filepath]['uri']
