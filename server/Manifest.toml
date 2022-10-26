@@ -56,6 +56,11 @@ version = "1.6.0"
 [[FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
+[[Glob]]
+git-tree-sha1 = "4df9f7e06108728ebf00a0a11edee4b29a482bb2"
+uuid = "c27321d9-0574-5035-807b-f59d2c89b15c"
+version = "1.3.0"
+
 [[InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -73,15 +78,15 @@ uuid = "b9b8584e-8fd3-41f9-ad0c-7255d428e418"
 version = "1.3.4"
 
 [[JuliaFormatter]]
-deps = ["CSTParser", "CommonMark", "DataStructures", "Pkg", "Tokenize"]
-git-tree-sha1 = "49d54a741f9d58e284bec91bdd4cab3d2ebe69e2"
+deps = ["CSTParser", "CommonMark", "DataStructures", "Glob", "Pkg", "Tokenize"]
+git-tree-sha1 = "a5705d6e0a99bfb9465e7f2381783d3368f3b94b"
 uuid = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
-version = "1.0.12"
+version = "1.0.14"
 
 [[LanguageServer]]
 deps = ["CSTParser", "JSON", "JSONRPC", "JuliaFormatter", "Markdown", "Pkg", "REPL", "StaticLint", "SymbolServer", "TestItemDetection", "Tokenize", "URIs", "UUIDs"]
-git-tree-sha1 = "e219009b12bf8da4f060aaf0422427873544747b"
-repo-rev = "781240a00dc9eecefb561e707ee117b23425ed85"
+git-tree-sha1 = "9627ae874d289072daab859ecd3938ec1af4bf16"
+repo-rev = "c6fad5d954ed99cb69ce31dc12132fffddf75562"
 repo-url = "https://github.com/julia-vscode/LanguageServer.jl.git"
 uuid = "2b0e0bc5-e4fd-59b4-8912-456d1b03d8d7"
 version = "4.3.2-DEV"
