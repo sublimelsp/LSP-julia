@@ -4,6 +4,7 @@ from LSP.plugin import css
 from LSP.plugin import LspTextCommand
 from LSP.plugin import LspWindowCommand
 from LSP.plugin import Notification
+from LSP.plugin import parse_uri
 from LSP.plugin import Request
 from LSP.plugin import Response
 from LSP.plugin import WorkspaceFolder
@@ -11,7 +12,6 @@ from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.core.protocol import DocumentUri, Location, Point, Position, Range, TextDocumentIdentifier
 from LSP.plugin.core.typing import Any, Dict, List, NotRequired, Optional, Set, TypedDict, Union
 from LSP.plugin.core.typing import cast
-from LSP.plugin.core.url import parse_uri
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import range_to_region
 from LSP.plugin.core.views import text_document_position_params
@@ -31,8 +31,8 @@ import shutil
 import sublime
 import sublime_plugin
 import subprocess
-import traceback
 import threading
+import traceback
 
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
