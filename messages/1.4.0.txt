@@ -1,0 +1,12 @@
+Version 1.4.0 (2022-10-27)
+--------------------------
+
+  * This release adds a new feature to run individual "test items" in a Julia package directly
+    from the editor UI. A test item is a set of tests contained within a @testitem block, which
+    is basically a replacement for @testset. You can read a short description for this feature
+    in the README of the LSP-julia GitHub repository at https://github.com/sublimelsp/LSP-julia
+    or with more examples at https://github.com/julia-vscode/TestItemRunner.jl#writing-tests.
+
+  * Improved tab focus behavior when interacting with the Julia REPL and Julia Documentation tabs.
+
+  * Updated the language server to the latest version.
