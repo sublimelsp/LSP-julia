@@ -43,6 +43,9 @@ LSP-julia has a custom feature, similar to the Julia extension for VS Code, whic
 For this to work, the tests must be contained within a `@testitem` block, which is basically a replacement for `@testset`.
 For an example see the screenshot below or read the detailed description at https://github.com/julia-vscode/TestItemRunner.jl#writing-tests.
 
+> **Note**
+> The `@testitem` has an isolated scope. The package to be tested is loaded implicitly through `using`. To access unexported symbols, either export them or call them by prepending the module name. (i.e. `MyPackage.foo()`)
+
 A `@testitem` can be run via the "Run Test" link shown in an annotation on the righthand side of the editor, or via the "LSP-julia: Run Testitem" command from the command palette.
 Possible test failures or errors will be shown as annotations at the position in the code where they occured.
 
