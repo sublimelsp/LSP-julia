@@ -18,25 +18,50 @@
         "julialangTestItemIdentification": true
     },
 
-    // Formatting options must be configured through a .JuliaFormatter.toml file, see
-    // https://domluna.github.io/JuliaFormatter.jl/stable/config/
+    // Formatting options must be configured through a .JuliaFormatter.toml file,
+    // see https://domluna.github.io/JuliaFormatter.jl/stable/config/
     "settings": {
-        "julia.lint.call": true,          // This compares call signatures against all known methods for the called function. Calls with too many or too few arguments, or unknown keyword parameters are highlighted.
-        "julia.lint.constif": true,       // Check for constant conditionals in if statements that result in branches never being reached.
-        "julia.lint.datadecl": true,      // Check variables used in type declarations are datatypes.
-        "julia.lint.disabledDirs": [      // Specifies sub-directories in a package directory where only basic linting is. This drastically lowers the chance for false positives.
+        // Sets the mode for completions.
+        // Valid values: "exportedonly", "import", "qualify"
+        "julia.completionmode": "qualify",
+        // Run the linter on active files.
+        "julia.lint.run": true,
+        // This compares call signatures against all known methods for the called
+        // function. Calls with too many or too few arguments, or unknown keyword
+        // parameters are highlighted.
+        "julia.lint.call": true,
+        // Check for constant conditionals in if statements that result in
+        // branches never being reached.
+        "julia.lint.constif": true,
+        // Check variables used in type declarations are datatypes.
+        "julia.lint.datadecl": true,
+        // Specifies sub-directories in a package directory where only basic
+        // linting is. This drastically lowers the chance for false positives.
+        "julia.lint.disabledDirs": [
             "docs",
             "test"
         ],
-        "julia.lint.iter": true,          // Check iterator syntax of loops. Will identify, for example, attempts to iterate over single values.
-        "julia.lint.lazy": true,          // Check for deterministic lazy boolean operators.
-        "julia.lint.missingrefs": "none", // Highlight unknown symbols. The `symbols` option will not mark unknown fields. Valid values: "none", "symbols", "all"
-        "julia.lint.modname": true,       // Check submodule names do not shadow their parent's name.
-        "julia.lint.nothingcomp": true,   // Check for use of `==` rather than `===` when comparing against `nothing`.
-        "julia.lint.pirates": true,       // Check for type piracy - the overloading of external functions with methods specified for external datatypes. 'External' here refers to imported code.
-        "julia.lint.run": true,           // Run the linter on active files.
-        "julia.lint.typeparam": true,     // Check parameters declared in `where` statements or datatype declarations are used.
-        "julia.lint.useoffuncargs": true, // Check that all declared arguments are used within the function body.
-        "julia.completionmode": "qualify" // Sets the mode for completions. Valid values: "exportedonly", "import", "qualify"
+        // Check iterator syntax of loops. Will identify, for example, attempts
+        // to iterate over single values.
+        "julia.lint.iter": true,
+        // Check for deterministic lazy boolean operators.
+        "julia.lint.lazy": true,
+        // Highlight unknown symbols. The `symbols` option will not mark unknown
+        // fields.
+        // Valid values: "none", "symbols", "all"
+        "julia.lint.missingrefs": "none",
+        // Check submodule names do not shadow their parent's name.
+        "julia.lint.modname": true,
+        // Check for use of `==` rather than `===` when comparing against `nothing`.
+        "julia.lint.nothingcomp": true,
+        // Check for type piracy - the overloading of external functions with
+        // methods specified for external datatypes. 'External' here refers to
+        // imported code.
+        "julia.lint.pirates": true,
+        // Check parameters declared in `where` statements or datatype declarations
+        // are used.
+        "julia.lint.typeparam": true,
+        // Check that all declared arguments are used within the function body.
+        "julia.lint.useoffuncargs": true,
     }
 }

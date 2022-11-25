@@ -50,6 +50,22 @@
               "type": "object",
               // @see https://github.com/julia-vscode/julia-vscode/blob/master/package.json
               "properties": {
+                "julia.completionmode": {
+                  "markdownDescription": "Sets the mode for completions.",
+                  "type": "string",
+                  "default": "qualify",
+                  "enum": ["exportedonly", "import", "qualify"],
+                  "markdownEnumDescriptions": [
+                    "Show completions for the current namespace.",
+                    "Show completions for the current namespace and unexported variables of `using`ed modules. Selection of an unexported variable will result in the automatic insertion of an explicit `using` statement.",
+                    "Show completions for the current namespace and unexported variables of `using`ed modules. Selection of an unexported variable will complete to a qualified variable name."
+                  ]
+                },
+                "julia.lint.run": {
+                  "markdownDescription": "Run the linter on active files.",
+                  "type": "boolean",
+                  "default": true
+                },
                 "julia.lint.call": {
                   "markdownDescription": "This compares call signatures against all known methods for the called function. Calls with too many or too few arguments, or unknown keyword parameters are highlighted.",
                   "type": "boolean",
@@ -104,11 +120,6 @@
                   "type": "boolean",
                   "default": true
                 },
-                "julia.lint.run": {
-                  "markdownDescription": "Run the linter on active files.",
-                  "type": "boolean",
-                  "default": true
-                },
                 "julia.lint.typeparam": {
                   "markdownDescription": "Check parameters declared in `where` statements or datatype declarations are used.",
                   "type": "boolean",
@@ -118,17 +129,6 @@
                   "markdownDescription": "Check that all declared arguments are used within the function body.",
                   "type": "boolean",
                   "default": true
-                },
-                "julia.completionmode": {
-                  "markdownDescription": "Sets the mode for completions.",
-                  "type": "string",
-                  "default": "qualify",
-                  "enum": ["exportedonly", "import", "qualify"],
-                  "markdownEnumDescriptions": [
-                    "Show completions for the current namespace.",
-                    "Show completions for the current namespace and unexported variables of `using`ed modules. Selection of an unexported variable will result in the automatic insertion of an explicit `using` statement.",
-                    "Show completions for the current namespace and unexported variables of `using`ed modules. Selection of an unexported variable will complete to a qualified variable name."
-                  ]
                 },
                 "julia.format.calls": {
                   "$ref": "#/$defs/format_deprecated"
