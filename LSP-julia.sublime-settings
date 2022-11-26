@@ -22,7 +22,15 @@
     // see https://domluna.github.io/JuliaFormatter.jl/stable/config/
     "settings": {
         // Sets the mode for completions.
-        // Valid values: "exportedonly", "import", "qualify"
+        // Valid values:
+        // - "exportedonly": Show completions for the current namespace.
+        // - "import": Show completions for the current namespace and unexported
+        //       variables of `using`ed modules. Selection of an unexported
+        //       variable will result in the automatic insertion of an explicit
+        //       `using` statement.
+        // - "qualify": Show completions for the current namespace and unexported
+        //       variables of `using`ed modules. Selection of an unexported
+        //       variable will complete to a qualified variable name.
         "julia.completionmode": "qualify",
         // Run the linter on active files.
         "julia.lint.run": true,
