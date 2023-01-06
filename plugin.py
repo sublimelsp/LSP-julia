@@ -121,6 +121,11 @@ KIND_ERRORED = (sublime.KIND_ID_COLOR_REDISH, "✗", "Errored")
 KIND_DEFAULT_ENVIRONMENT = (sublime.KIND_ID_COLOR_YELLOWISH, "d", "Default Environment")
 KIND_WORKSPACE_FOLDER = (sublime.KIND_ID_COLOR_PURPLISH, "f", "Workspace Folder")
 
+# unnamed PointClassification flags for View.classify (no guarantee of correctness)
+CLASS_INSIDE_WORD = 512
+# CLASS_BRACKET_OPEN = 4096
+# CLASS_BRACKET_CLOSE = 8192
+
 TESTITEM_ICONS = {
     TestItemStatus.Passed: 'Packages/LSP-julia/icons/passed.png',
     TestItemStatus.Failed: 'Packages/LSP-julia/icons/failed.png',
@@ -290,7 +295,8 @@ class TestItemStorage:
             return
         if not params['package_path']:
             for testitem in details:
-                testitem['error'] = "Unable to identify a Julia package for this test item.<br>Ensure you work in a Julia project environment with a Project.toml file."
+                testitem['error'] = ("Unable to identify a Julia package for this test item.<br>"
+                    "Ensure you work in a Julia project environment with a Project.toml file.")
         status = [{
             'status': TestItemStatus.Invalid if testitem.get('error') else TestItemStatus.Undetermined,
             'message': None,
@@ -362,7 +368,8 @@ class TestItemStorage:
             }  # type: Dict[str, List[str]]
             version = self.testitemparams[filepath]['version']
             error_annotation_color = view.style_for_scope(TESTITEM_SCOPES[TestItemStatus.Errored])['foreground']
-            for idx, item, result in zip(itertools.count(), self.testitemdetails[filepath], self.testitemstatus[filepath]):
+            for idx, item, result in \
+                    zip(itertools.count(), self.testitemdetails[filepath], self.testitemstatus[filepath]):
                 region = sublime.Region(point_to_offset(Point.from_lsp(item['range']['start']), view))
                 annotation = '<a href="{}#idx={}&amp;version={}">Run Test</a>'.format(html.escape(uri), idx, version)
                 duration = result['duration']
@@ -400,6 +407,8 @@ class TestItemStorage:
             for status in regions.keys():
                 regions_key = 'lsp_julia_testitem_{}'.format(status)
                 if regions[status]:
+                    on_navigate = self.run_testitem if status not in (TestItemStatus.Pending, TestItemStatus.Invalid) \
+                        else None
                     view.add_regions(
                         regions_key,
                         regions[status],
@@ -408,7 +417,7 @@ class TestItemStorage:
                         flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
                         annotations=annotations[status],
                         annotation_color=view.style_for_scope(TESTITEM_SCOPES[status])['foreground'],
-                        on_navigate=None if status in (TestItemStatus.Pending, TestItemStatus.Invalid) else self.run_testitem)
+                        on_navigate=on_navigate)
                 else:
                     view.erase_regions(regions_key)
 
@@ -428,7 +437,9 @@ class TestItemStorage:
                     view.erase_regions(key)
                     self.error_keys[filepath].discard(key)
 
-    def run_testitem_request_params(self, uri: DocumentUri, idx: int) -> Optional[TestserverRunTestitemRequestExtendedParams]:
+    def run_testitem_request_params(
+        self, uri: DocumentUri, idx: int
+    ) -> Optional[TestserverRunTestitemRequestExtendedParams]:
         filepath = parse_uri(uri)[1]
         params = self.testitemparams.get(filepath)
         if not params:
@@ -479,10 +490,12 @@ class TestItemStorage:
         if params:
             self.pending_result = True
             self.testitemstatus[filepath][idx]['status'] = TestItemStatus.Pending
-            thread = threading.Thread(target=self.run_testitem_daemon_thread, args=(uri, idx, version, params), daemon=True)
+            thread = threading.Thread(
+                target=self.run_testitem_daemon_thread, args=(uri, idx, version, params), daemon=True)
             thread.start()
             if focus_testitem:
-                view = self.window.open_file("{}:{}".format(filepath, params['line'] + 1), flags=sublime.ENCODED_POSITION)
+                view = self.window.open_file(
+                    "{}:{}".format(filepath, params['line'] + 1), flags=sublime.ENCODED_POSITION)
                 # In case the file wasn't open before and is still loading, add a small delay before drawing the
                 # annotations.
                 if view.is_loading():
@@ -492,7 +505,9 @@ class TestItemStorage:
             self.render_testitems(uri)
             self.clear_error_annotations(uri, params['name'])
 
-    def run_testitem_daemon_thread(self, uri: DocumentUri, idx: int, version: int, params: TestserverRunTestitemRequestExtendedParams) -> None:
+    def run_testitem_daemon_thread(
+        self, uri: DocumentUri, idx: int, version: int, params: TestserverRunTestitemRequestExtendedParams
+    ) -> None:
         try:
             file_directory = os.path.dirname(parse_uri(params['uri'])[1])
             params_json = json.dumps(params, separators=(',', ':'))
@@ -510,11 +525,14 @@ class TestItemStorage:
             self.pending_result = False
             filepath = parse_uri(uri)[1]
             self.testitemstatus[filepath][idx]['status'] = TestItemStatus.Invalid
-            self.testitemdetails[filepath][idx]['error'] = "The test process crashed while running this testitem.<br>Please check the console and consider to create an issue report in the LSP-julia GitHub repo."
+            self.testitemdetails[filepath][idx]['error'] = ("The test process crashed while running this testitem.<br>"
+                "Please check the console and consider to create an issue report in the LSP-julia GitHub repo.")
             traceback.print_exc()
             sublime.set_timeout(partial(self.render_testitems, uri))
 
-    def on_result(self, uri: DocumentUri, idx: int, version: int, params: TestserverRunTestitemRequestParamsReturn) -> None:
+    def on_result(
+        self, uri: DocumentUri, idx: int, version: int, params: TestserverRunTestitemRequestParamsReturn
+    ) -> None:
         self.pending_result = False
         filepath = parse_uri(uri)[1]
         if self.testitemparams[filepath]['version'] == version:
@@ -534,13 +552,14 @@ class LspJuliaPlugin(AbstractPlugin):
 
     def __init__(self, weaksession) -> None:
         super().__init__(weaksession)
-        self.testitems = TestItemStorage(weaksession().window)  # pyright: ignore[reportOptionalMemberAccess]
+        session = weaksession()
+        if not session:
+            return
+        self.testitems = TestItemStorage(session.window)
         if sublime.load_settings(SETTINGS_FILE).get("show_environment_status"):
-            session = self.weaksession()
-            if session:
-                env_name = os.path.basename(session.working_directory) if session.working_directory else \
-                    LspJuliaPlugin.default_julia_environment()
-                session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
+            env_name = os.path.basename(session.working_directory) if session.working_directory else \
+                LspJuliaPlugin.default_julia_environment()
+            session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
 
     @classmethod
     def name(cls) -> str:
@@ -548,10 +567,7 @@ class LspJuliaPlugin(AbstractPlugin):
 
     @classmethod
     def additional_variables(cls) -> Optional[Dict[str, str]]:
-        variables = dict()
-        variables["julia_exe"] = cls.julia_exe()
-        variables["server_path"] = cls.basedir()
-        return variables
+        return {'julia_exe': cls.julia_exe(), 'server_path': cls.basedir()}
 
     @classmethod
     def basedir(cls) -> str:
@@ -590,7 +606,8 @@ class LspJuliaPlugin(AbstractPlugin):
     @classmethod
     def needs_update_or_installation(cls) -> bool:
         if not shutil.which(cls.julia_exe()):
-            msg = "The executable \"{}\" could not be found. Set up the path to the Julia executable by running the command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.".format(cls.julia_exe())
+            msg = ('The executable "{}" could not be found. Set up the path to the Julia executable by running the '
+                'command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.').format(cls.julia_exe())
             raise RuntimeError(msg)
         try:
             with open(cls.version_file(), "r") as fp:
@@ -622,7 +639,8 @@ class LspJuliaPlugin(AbstractPlugin):
                 with open(cls.version_file(), "w") as fp:
                     fp.write(cls.server_version())
             else:
-                error_msg = "An error occured while trying to install the Language Server. Check the console for possible error messages or consider to open an issue in the LSP-julia issue tracker on GitHub."
+                error_msg = ("An error occured while trying to install the Language Server. Check the console for "
+                    "possible error messages or consider to open an issue in the LSP-julia issue tracker on GitHub.")
                 sublime.error_message(error_msg)
         except Exception:
             shutil.rmtree(cls.basedir(), ignore_errors=True)
@@ -654,9 +672,10 @@ class LspJuliaPlugin(AbstractPlugin):
         return None
 
     def on_server_response_async(self, method: str, response: Response) -> None:
-        if method == "textDocument/hover":
-            if response.result and isinstance(response.result["contents"], dict) and response.result["contents"].get("kind") == "markdown":  # pyright: ignore
-                response.result["contents"]["value"] = prepare_markdown(response.result["contents"]["value"])  # pyright: ignore
+        if method == "textDocument/hover" and isinstance(response.result, dict):
+            contents = response.result.get("contents")
+            if isinstance(contents, dict) and contents.get("kind") == "markdown":
+                response.result["contents"]["value"] = prepare_markdown(contents["value"])
 
     # Handles the julia/publishTestitems notification
     def m_julia_publishTestitems(self, params: PublishTestItemsParams) -> None:
@@ -684,7 +703,7 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
 
     def run(self, env_path: str) -> None:
         if env_path == "__select_folder_dialog":
-            sublime.select_folder_dialog(self.on_select_folder, multi_select=False)  # pyright: ignore  # compatible types for self.on_select_folder are ensured due to multi_select=False
+            sublime.select_folder_dialog(self.on_select_folder, multi_select=False)  # pyright: ignore
         else:
             self.activate_environment(env_path)
 
@@ -706,33 +725,39 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
 
     def input(self, args: dict) -> Optional[sublime_plugin.ListInputHandler]:
         if "env_path" not in args:
-            return EnvPathInputHandler(self.session().get_workspace_folders())  # pyright: ignore [reportOptionalMemberAccess]
+            session = self.session()
+            workspace_folders = session.get_workspace_folders() if session else []
+            return EnvPathInputHandler(workspace_folders)
 
 
 class EnvPathInputHandler(sublime_plugin.ListInputHandler):
-    """
-    Used by JuliaActivateEnvironmentCommand to display the available Julia project environments the user can choose from.
-    """
 
     def __init__(self, workspace_folders: List[WorkspaceFolder]) -> None:
         self.workspace_folders = workspace_folders
 
     def list_items(self) -> List[sublime.ListInputItem]:
-        # add default Julia environments from .julia/environments
-        julia_env_home = os.path.expanduser(os.path.join("~", ".julia", "environments"))
-        names = [env for env in reversed(os.listdir(julia_env_home)) if os.path.isdir(os.path.join(julia_env_home, env))]  # collect all folder names in .julia/environments
-        paths = [os.path.join(julia_env_home, env) for env in names]  # the corresponding folder paths
-        items = [sublime.ListInputItem(name, path, kind=KIND_DEFAULT_ENVIRONMENT) for name, path in zip(names, paths)]
-        # add workspace folders on top of the list if they are valid Julia project environments
-        for workspace_folder in reversed(self.workspace_folders):
-            if workspace_folder.path not in paths and is_julia_environment(workspace_folder.path):
-                items.insert(0, sublime.ListInputItem(workspace_folder.name, workspace_folder.path, kind=KIND_WORKSPACE_FOLDER))
-        # add option for folder picker dialog
-        items.insert(0, sublime.ListInputItem("(pick a folder…)", "__select_folder_dialog"))
+        items = []  # type: List[sublime.ListInputItem]
+        # Add option for folder picker dialog
+        items.append(sublime.ListInputItem("(pick a folder…)", "__select_folder_dialog"))
+        # Collect all folder names and corresponding paths in .julia/environments
+        julia_environments_path = os.path.expanduser(os.path.join("~", ".julia", "environments"))
+        env_names = [
+            env for env in reversed(os.listdir(julia_environments_path))
+            if os.path.isdir(os.path.join(julia_environments_path, env))
+        ]
+        env_paths = [os.path.join(julia_environments_path, env) for env in env_names]
+        # Add workspace folders if they are valid Julia project environments
+        for folder in self.workspace_folders:
+            if folder.path not in env_paths and is_julia_environment(folder.path):
+                items.append(sublime.ListInputItem(folder.name, folder.path, kind=KIND_WORKSPACE_FOLDER))
+        # Add default Julia environments from .julia/environments
+        items.extend([
+            sublime.ListInputItem(name, path, kind=KIND_DEFAULT_ENVIRONMENT) for name, path in zip(env_names, env_paths)
+        ])
         return items
 
     def placeholder(self) -> str:
-        return "Select Julia project/environment folder"
+        return "Select Julia environment"
 
     def preview(self, value: Optional[str]) -> Union[sublime.Html, str, None]:
         if value == "__select_folder_dialog":
@@ -775,7 +800,9 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
 
     def run(self, edit: sublime.Edit) -> None:
         params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
-        self.session_by_name(self.session_name).send_request(Request("julia/getCurrentBlockRange", params), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
+        session = self.session_by_name(self.session_name)
+        if session:
+            session.send_request(Request("julia/getCurrentBlockRange", params), self.on_result)
 
     def on_result(self, params: Any) -> None:
         a = point_to_offset(Point.from_lsp(params[0]), self.view)
@@ -812,7 +839,9 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         sel = self.view.sel()[0]
         if sel.empty():
             params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
-            self.session_by_name(self.session_name).send_request(Request("julia/getCurrentBlockRange", params), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
+            session = self.session_by_name(self.session_name)
+            if session:
+                session.send_request(Request("julia/getCurrentBlockRange", params), self.on_result)
         else:
             code_block = self.view.substr(sel)
             if repl_ready:
@@ -935,8 +964,9 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
                 self._last_words.append(self._current_word)
                 self._next_words.clear()
             self._current_word = word
-
-        self.session().send_request(Request("julia/getDocFromWord", {"word": word}), self.on_result)  # pyright: ignore [reportOptionalMemberAccess]
+        session = self.session()
+        if session:
+            session.send_request(Request("julia/getDocFromWord", {"word": word}), self.on_result)
 
     def on_result(self, response: str) -> None:
         selected_sheets = self.window.selected_sheets()
@@ -988,9 +1018,16 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
         # Add navigation toolbar with "Back", "Forward" and "Search" links
         toolbar_links = []  # type: List[str]
-        toolbar_links.append("""<a title='Go back one page' href='subl:julia_search_documentation {"word": "__back"}'>Back</a>""" if len(self._last_words) else "Back")
-        toolbar_links.append("""<a title='Go forward one page' href='subl:julia_search_documentation {"word": "__forward"}'>Forward</a>""" if len(self._next_words) else "Forward")
-        toolbar_links.append("""<a href='subl:julia_search_documentation'>Search</a>""")
+
+        toolbar_links.append(
+            "<a title='Go back one page' href='{}'>Back</a>".format(
+                sublime.command_url('julia_search_documentation', {'word': '__back'})
+            ) if self._last_words else "Back")
+        toolbar_links.append(
+            "<a title='Go forward one page' href='{}'>Forward</a>".format(
+                sublime.command_url('julia_search_documentation', {'word': '__forward'})
+            ) if self._next_words else "Forward")
+        toolbar_links.append("<a href='subl:julia_search_documentation'>Search</a>")
         toolbar = "<div class='toolbar'>" + " | ".join(toolbar_links) + "</div><hr>\n"
 
         markdown_content = prepare_markdown(response)
@@ -1049,9 +1086,7 @@ class JuliaShowDocumentationCommand(LspTextCommand):
             pt = self.view.sel()[0].b
         # The View.word() API isn't useful to decide whether a point is on a word, it may return
         # strings filled with whitespace or punctuation symbols.
-        point_classification = self.view.classify(pt)
-        return point_classification == 512 or bool(point_classification & sublime.CLASS_WORD_START) or \
-            bool(point_classification & sublime.CLASS_WORD_END)
+        return bool(self.view.classify(pt) & (sublime.CLASS_WORD_START | sublime.CLASS_WORD_END | CLASS_INSIDE_WORD))
 
     def is_visible(self, event: Optional[dict] = None, point: Optional[int] = None) -> bool:
         return self.is_enabled(event, point)
