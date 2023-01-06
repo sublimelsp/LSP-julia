@@ -692,6 +692,23 @@ def plugin_unloaded() -> None:
     unregister_plugin(LspJuliaPlugin)
 
 
+class OpenFileEnhancedCommand(sublime_plugin.WindowCommand):
+    """ An enhanced version and wrapper of the built-in open_file command, which also supports modifier keys when used
+    in form of a link in minihtml. """
+
+    def run(self, event: Optional[dict] = None, **kwargs) -> None:
+        add_to_selection = kwargs.get('add_to_selection', False)
+        if event and not add_to_selection:
+            modifier_keys = event.get('modifier_keys', {})
+            if 'primary' in modifier_keys or 'shift' in modifier_keys:
+                add_to_selection = True
+        kwargs['add_to_selection'] = add_to_selection
+        self.window.run_command('open_file', kwargs)
+
+    def want_event(self) -> bool:
+        return True
+
+
 class JuliaActivateEnvironmentCommand(LspWindowCommand):
     """
     Can be invoked from the command palette to switch the active Julia project environment.
@@ -1040,12 +1057,12 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             # https://github.com/sublimehq/sublime_text/issues/4800
             markdown_content = re.sub(
                 r"\[(.+?:\d+)\]\(file:///.+?#\d+\)",
-                r"""<a href='subl:open_file {"file": "\1", "encoded_position": true}'>\1</a>""",
+                r"""<a href='subl:open_file_enhanced {"file": "\1", "encoded_position": true}'>\1</a>""",
                 markdown_content)
         else:
             markdown_content = re.sub(
                 r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)",
-                r"""<a href='subl:open_file {"file": "\1"}'>\1\2</a>""",
+                r"""<a href='subl:open_file_enhanced {"file": "\1"}'>\1\2</a>""",
                 markdown_content)
 
         content = frontmatter + toolbar + markdown_content
