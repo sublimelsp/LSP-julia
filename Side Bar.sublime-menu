@@ -1,0 +1,7 @@
+[
+    {
+        "caption": "LSP-julia: Activate this Environment",
+        "command": "julia_activate_environment",
+        "args": {"files": [], "dirs": [], "paths": []}
+    },
+]

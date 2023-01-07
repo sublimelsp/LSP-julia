@@ -709,20 +709,34 @@ class OpenFileEnhancedCommand(sublime_plugin.WindowCommand):
         return True
 
 
+SELECT_FOLDER_DIALOG_FLAG = 1
+
+
 class JuliaActivateEnvironmentCommand(LspWindowCommand):
-    """
-    Can be invoked from the command palette to switch the active Julia project environment.
-    The active Julia project environment determines the Julia packages used by the language server to provide
-    autocomplete suggestions and diagnostics.
-    """
+    """ Selects the active Julia environment, which is used by the language server to resolve the package dependencies
+    in order to provide autocomplete suggestions and diagnostics. The active environment will be shown in the status
+    bar, unless the "show_environment_status" setting is disabled. """
 
     session_name = SESSION_NAME
 
-    def run(self, env_path: str) -> None:
-        if env_path == "__select_folder_dialog":
+    def run(self, **kwargs) -> None:
+        files = kwargs.get('files')
+        if files:
+            self.activate_environment(os.path.dirname(files[0]))
+            return
+        env_path = kwargs.get('env_path')
+        if env_path == SELECT_FOLDER_DIALOG_FLAG:
             sublime.select_folder_dialog(self.on_select_folder, multi_select=False)  # pyright: ignore
-        else:
+        elif env_path:
             self.activate_environment(env_path)
+
+    def is_visible(self, **kwargs) -> bool:
+        if not super().is_enabled():
+            return False
+        files = kwargs.get('files')
+        if files is not None:  # command was invoked from the side bar context menu
+            return len(files) == 1 and os.path.basename(files[0]) in ('Project.toml', 'JuliaProject.toml')
+        return True
 
     def on_select_folder(self, folder_path: Optional[str]) -> None:
         if folder_path:
@@ -741,7 +755,9 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
             session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
 
     def input(self, args: dict) -> Optional[sublime_plugin.ListInputHandler]:
-        if "env_path" not in args:
+        if 'files' in args:  # command was invoked from the side bar context menu
+            return None
+        if 'env_path' not in args:  # command was invoked from the command palette
             session = self.session()
             workspace_folders = session.get_workspace_folders() if session else []
             return EnvPathInputHandler(workspace_folders)
@@ -755,7 +771,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     def list_items(self) -> List[sublime.ListInputItem]:
         items = []  # type: List[sublime.ListInputItem]
         # Add option for folder picker dialog
-        items.append(sublime.ListInputItem("(pick a folder…)", "__select_folder_dialog"))
+        items.append(sublime.ListInputItem("(pick a folder…)", SELECT_FOLDER_DIALOG_FLAG))
         # Collect all folder names and corresponding paths in .julia/environments
         julia_environments_path = os.path.expanduser(os.path.join("~", ".julia", "environments"))
         env_names = [
@@ -776,11 +792,11 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     def placeholder(self) -> str:
         return "Select Julia environment"
 
-    def preview(self, value: Optional[str]) -> Union[sublime.Html, str, None]:
-        if value == "__select_folder_dialog":
+    def preview(self, value: Union[str, int, None]) -> Union[sublime.Html, str, None]:
+        if value == SELECT_FOLDER_DIALOG_FLAG:
             return "Open a folder picker dialog to select a Julia project"
-        else:
-            return sublime.Html("<i>{}</i>".format(value)) if value else None
+        elif value:
+            return sublime.Html("<i>{}</i>".format(value))
 
     def validate(self, value) -> bool:
         return value is not None
