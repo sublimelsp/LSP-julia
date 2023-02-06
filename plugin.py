@@ -605,10 +605,15 @@ class LspJuliaPlugin(AbstractPlugin):
 
     @classmethod
     def needs_update_or_installation(cls) -> bool:
-        if not shutil.which(cls.julia_exe()):
-            msg = ('The executable "{}" could not be found. Set up the path to the Julia executable by running the '
-                'command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.').format(cls.julia_exe())
-            raise RuntimeError(msg)
+        # The check for presence of the julia executable is disabled for now, because
+        # [`shutil.which`](https://docs.python.org/release/3.3.6/library/shutil.html#shutil.which) doesn't work with
+        # symlinks on Python 3.3 (on Windows at least), and if Julia was installed via juliaup it will create a symlink
+        # for it - see https://github.com/sublimelsp/LSP-julia/issues/24
+        #
+        # if not shutil.which(cls.julia_exe()):
+        #     msg = ('The executable "{}" could not be found. Set up the path to the Julia executable by running the '
+        #         'command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.').format(cls.julia_exe())
+        #     raise RuntimeError(msg)
         try:
             with open(cls.version_file(), "r") as fp:
                 return cls.server_version() != fp.read().strip()
