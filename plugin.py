@@ -10,7 +10,7 @@ from LSP.plugin import Response
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.core.protocol import DocumentUri, Location, Point, Position, Range, TextDocumentIdentifier
-from LSP.plugin.core.typing import Any, Dict, List, NotRequired, Optional, Set, TypedDict, Union
+from LSP.plugin.core.typing import Any, Dict, List, NotRequired, Optional, Set, StrEnum, Tuple, TypedDict, Union
 from LSP.plugin.core.typing import cast
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import range_to_region
@@ -73,17 +73,30 @@ TestItemDetail = TypedDict('TestItemDetail', {
     'code': Optional[str],
     'code_range': Optional[Range],
     'option_default_imports': Optional[bool],
-    'option_tags': Optional[List[str]],
-    'error': Optional[str]
+    'option_tags': Optional[List[str]]
 })
 
-PublishTestItemsParams = TypedDict('PublishTestItemsParams', {
+TestSetupDetail = TypedDict('TestSetupDetail', {
+    'name': str,
+    'range': Range,
+    'code': Optional[str],
+    'code_range': Optional[Range]
+})
+
+TestErrorDetail = TypedDict('TestErrorDetail', {
+    'range': Range,
+    'error': str
+})
+
+PublishTestsParams = TypedDict('PublishTestsParams', {
     'uri': DocumentUri,
     'version': NotRequired[int],
     'project_path': str,
     'package_path': str,
     'package_name': str,
-    'testitemdetails': List[TestItemDetail]
+    'testitemdetails': List[TestItemDetail],
+    'testsetupdetails': List[TestSetupDetail],
+    'testerrordetails': List[TestErrorDetail]
 })
 
 # Parameters for the runtestitem.jl script, which also requires project_path and package_path
@@ -100,8 +113,7 @@ TestserverRunTestitemRequestExtendedParams = TypedDict('TestserverRunTestitemReq
 })
 
 
-# class TestItemStatus(StrEnum):
-class TestItemStatus:
+class TestItemStatus(StrEnum):
     # Used as response values by VSCodeTestServer.jl
     Passed = 'passed'
     Failed = 'failed'
@@ -133,7 +145,7 @@ TESTITEM_ICONS = {
     TestItemStatus.Undetermined: '',
     TestItemStatus.Pending: 'Packages/LSP-julia/icons/stopwatch.png',
     TestItemStatus.Invalid: ''
-}
+}  # type: Dict[TestItemStatus, str]
 
 TESTITEM_SCOPES = {
     TestItemStatus.Passed: 'region.greenish markup.testitem.passed.lsp',
@@ -142,13 +154,13 @@ TESTITEM_SCOPES = {
     TestItemStatus.Undetermined: 'region.cyanish markup.testitem.undetermined.lsp',
     TestItemStatus.Pending: 'region.yellowish markup.testitem.pending.lsp',
     TestItemStatus.Invalid: 'region.redish markup.error markup.testitem.invalid.lsp'
-}
+}  # type: Dict[TestItemStatus, str]
 
 TESTITEM_KINDS = {
     TestItemStatus.Passed: KIND_PASSED,
     TestItemStatus.Failed: KIND_FAILED,
     TestItemStatus.Errored: KIND_ERRORED
-}
+}  # type: Dict[TestItemStatus, Tuple[int, str, str]]
 
 SUBLIME_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
 SETTINGS_FILE = "LSP-julia.sublime-settings"
@@ -248,8 +260,8 @@ def prepare_markdown(content: str) -> str:
 
     # Workaround CommonMark deficiency: two spaces followed by a newline should result in a new paragraph
     content = re.sub("(\\S)  \n", "\\1\n\n", content)
-    # Add another newline before horizontal rule
-    content = re.sub("\n---", "\n\n---", content)
+    # Add another newline before horizontal rule following fenced code block
+    content = re.sub("```\n---", "```\n\n---", content)
     # Add another newline before list items
     content = re.sub("\n- ", "\n\n- ", content)
     # Replace [`title`](@ref) links with the corresponding command to navigate the documentation with a new search query
@@ -276,32 +288,31 @@ class TestItemStorage:
         self.pending_result = False
         self.testitemparams = {}  # type: Dict[str, Dict[str, Any]]
         self.testitemdetails = {}  # type: Dict[str, List[TestItemDetail]]
+        self.testerrordetails = {}  # type: Dict[str, List[TestErrorDetail]]
         self.testitemstatus = {}  # type: Dict[str, List[TestserverRunTestitemRequestParamsReturn]]
         self.error_keys = {}  # type: Dict[str, Set[str]]
 
-    def update(self, uri: DocumentUri, params: PublishTestItemsParams) -> None:
+    def update(self, uri: DocumentUri, params: PublishTestsParams) -> None:
         # Use the filepath instead of the URI as the key for storing the testitems, because on Windows the language
         # server sometimes uses uppercase and sometimes lowercase drive letters in the URI for the same file.
         filepath = parse_uri(uri)[1]
-        details = params['testitemdetails']
+        testitems = params['testitemdetails']
+        testerrors = params['testerrordetails']
         old_params = self.testitemparams.get(filepath)
-        if not details:
+        if not testitems and not testerrors:
             # If there are no testitems reported, just delete the key for the previously stored items if they existed.
             if old_params:
                 del self.testitemparams[filepath]
                 del self.testitemdetails[filepath]
+                del self.testerrordetails[filepath]
                 del self.testitemstatus[filepath]
                 self.render_testitems(uri)
             return
-        if not params['package_path']:
-            for testitem in details:
-                testitem['error'] = ("Unable to identify a Julia package for this test item.<br>"
-                    "Ensure you work in a Julia project environment with a Project.toml file.")
         status = [{
-            'status': TestItemStatus.Invalid if testitem.get('error') else TestItemStatus.Undetermined,
+            'status': TestItemStatus.Undetermined,
             'message': None,
             'duration': None
-        } for testitem in details]  # type: List[TestserverRunTestitemRequestParamsReturn]
+        } for _ in testitems]  # type: List[TestserverRunTestitemRequestParamsReturn]
         if not old_params or \
             any(old_params[key] != params[key] for key in ('project_path', 'package_path', 'package_name')):
             # If there were no testitems for this file already stored, or one of the major parameters changed, copy the
@@ -315,7 +326,7 @@ class TestItemStorage:
             }
         else:
             # If there are both new and old testitems, compare them and determine the unchanged items so that the old
-            # status can be retained. An old and a new testitem is considered the same if it has the same "id".
+            # status is not forgotten. An old and a new testitem is considered the same if it has the same "id".
             # Unfortunately the "id" field for the testitems is not necessarily unique, so there might be incorrect
             # matches via this approach. Perhaps it should be considered as an additional requirement that the "code"
             # property must also be the same (that would mean that testitems lose their status whenever there are
@@ -324,14 +335,13 @@ class TestItemStorage:
             self.testitemparams[filepath]['version'] = \
                 params.get('version', self.testitemparams[filepath]['version'] + 1)
             for old_idx, old_item in enumerate(self.testitemdetails[filepath]):
-                for new_idx, new_item in enumerate(details):
-                    if new_item.get('error'):
-                        continue
+                for new_idx, new_item in enumerate(testitems):
                     if old_item['id'] == new_item['id']:
                         # Copy old status into new status for this testitem
                         status[new_idx] = self.testitemstatus[filepath][old_idx]
                         break
-        self.testitemdetails[filepath] = details
+        self.testitemdetails[filepath] = testitems
+        self.testerrordetails[filepath] = testerrors
         self.testitemstatus[filepath] = status
         self.render_testitems(uri)
 
@@ -346,16 +356,16 @@ class TestItemStorage:
         filepath = parse_uri(uri)[1]
         view = self.window.find_open_file(filepath)  # This doesn't work if the tab was dragged out of the window...
         if view and not view.is_loading():
-            regions = {
+            regions_by_status = {
                 TestItemStatus.Passed: [],
                 TestItemStatus.Failed: [],
                 TestItemStatus.Errored: [],
                 TestItemStatus.Undetermined: [],
                 TestItemStatus.Pending: [],
                 TestItemStatus.Invalid: []
-            }  # type: Dict[str, List[sublime.Region]]
+            }  # type: Dict[TestItemStatus, List[sublime.Region]]
             if filepath not in self.testitemdetails:
-                for status in regions.keys():
+                for status in regions_by_status:
                     view.erase_regions('lsp_julia_testitem_{}'.format(status))
                 return
             annotations = {
@@ -365,7 +375,7 @@ class TestItemStorage:
                 TestItemStatus.Undetermined: [],
                 TestItemStatus.Pending: [],
                 TestItemStatus.Invalid: []
-            }  # type: Dict[str, List[str]]
+            }  # type: Dict[TestItemStatus, List[str]]
             version = self.testitemparams[filepath]['version']
             error_annotation_color = view.style_for_scope(TESTITEM_SCOPES[TestItemStatus.Errored])['foreground']
             for idx, item, result in \
@@ -378,13 +388,8 @@ class TestItemStorage:
                         annotation += " ({}ms)".format(round(duration))
                     else:
                         annotation += " ({:0.2f}s)".format(duration/1000)
-                status = result['status']
-                error = item.get('error')
-                if error and isinstance(error, str):
-                    regions[TestItemStatus.Invalid].append(region)
-                    annotations[TestItemStatus.Invalid].append(error)
-                    continue
-                regions[status].append(region)
+                status = cast(TestItemStatus, result['status'])
+                regions_by_status[status].append(region)
                 if status in (TestItemStatus.Passed, TestItemStatus.Undetermined):
                     annotations[status].append(annotation)
                 elif status == TestItemStatus.Pending:
@@ -404,14 +409,23 @@ class TestItemStorage:
                                     annotation_color=error_annotation_color,
                                     on_close=partial(self.hide_annotation, uri, regions_key))
                                 self.error_keys[filepath].add(regions_key)
-            for status in regions.keys():
+                elif status == TestItemStatus.Invalid:
+                    annotations[status].append('<br>'.join([
+                        "The test process crashed while running this testitem.",
+                        "Please check the console and consider to create an issue report in the LSP-julia GitHub repo."
+                    ]))
+            for testerror in self.testerrordetails[filepath]:
+                region = sublime.Region(point_to_offset(Point.from_lsp(testerror['range']['start']), view))
+                regions_by_status[TestItemStatus.Invalid].append(region)
+                annotations[TestItemStatus.Invalid].append(testerror['error'])
+            for status, regions in regions_by_status.items():
                 regions_key = 'lsp_julia_testitem_{}'.format(status)
-                if regions[status]:
+                if regions:
                     on_navigate = self.run_testitem if status not in (TestItemStatus.Pending, TestItemStatus.Invalid) \
                         else None
                     view.add_regions(
                         regions_key,
-                        regions[status],
+                        regions,
                         scope=TESTITEM_SCOPES[status],
                         icon=TESTITEM_ICONS[status],
                         flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
@@ -525,8 +539,6 @@ class TestItemStorage:
             self.pending_result = False
             filepath = parse_uri(uri)[1]
             self.testitemstatus[filepath][idx]['status'] = TestItemStatus.Invalid
-            self.testitemdetails[filepath][idx]['error'] = ("The test process crashed while running this testitem.<br>"
-                "Please check the console and consider to create an issue report in the LSP-julia GitHub repo.")
             traceback.print_exc()
             sublime.set_timeout(partial(self.render_testitems, uri))
 
@@ -601,7 +613,7 @@ class LspJuliaPlugin(AbstractPlugin):
 
     @classmethod
     def server_version(cls) -> str:
-        return "c6fad5d"  # LanguageServer v4.3.2-DEV
+        return "3a000de"  # LanguageServer v4.4.1-DEV
 
     @classmethod
     def needs_update_or_installation(cls) -> bool:
@@ -682,8 +694,8 @@ class LspJuliaPlugin(AbstractPlugin):
             if isinstance(contents, dict) and contents.get("kind") == "markdown":
                 response.result["contents"]["value"] = prepare_markdown(contents["value"])
 
-    # Handles the julia/publishTestitems notification
-    def m_julia_publishTestitems(self, params: PublishTestItemsParams) -> None:
+    # Handles the julia/publishTests notification
+    def m_julia_publishTests(self, params: PublishTestsParams) -> None:
         if params:
             uri = params['uri']
             self.testitems.update(uri, params)
@@ -1154,16 +1166,15 @@ class JuliaRunTestitemCommand(LspWindowCommand):
         self.hrefs = []  # type: List[str]
         for filepath, details in plugin.testitems.testitemdetails.items():
             for idx, testitem in enumerate(details):
-                if not testitem.get('error'):
-                    status = plugin.testitems.testitemstatus[filepath][idx]['status']
-                    kind = TESTITEM_KINDS.get(status, sublime.KIND_AMBIGUOUS)
-                    details = ", ".join(testitem.get('option_tags') or [])
-                    location = "{}:{}".format(filepath, testitem['range']['start']['line'] + 1)
-                    items.append(
-                        sublime.QuickPanelItem(testitem['label'], details=details, annotation=location, kind=kind))
-                    uri = plugin.testitems.testitemparams[filepath]['uri']
-                    version = plugin.testitems.testitemparams[filepath]['version']
-                    self.hrefs.append("{}#idx={}&amp;version={}".format(uri, idx, version))
+                status = cast(TestItemStatus, plugin.testitems.testitemstatus[filepath][idx]['status'])
+                kind = TESTITEM_KINDS.get(status, sublime.KIND_AMBIGUOUS)
+                details = ", ".join(testitem.get('option_tags') or [])
+                location = "{}:{}".format(filepath, testitem['range']['start']['line'] + 1)
+                items.append(
+                    sublime.QuickPanelItem(testitem['label'], details=details, annotation=location, kind=kind))
+                uri = plugin.testitems.testitemparams[filepath]['uri']
+                version = plugin.testitems.testitemparams[filepath]['version']
+                self.hrefs.append("{}#idx={}&amp;version={}".format(uri, idx, version))
         session.window.show_quick_panel(items, on_select=partial(self._on_select, plugin), placeholder="Run @testitem")
 
     def is_enabled(self) -> bool:
