@@ -659,10 +659,6 @@ class LspJuliaPlugin(AbstractPlugin):
             if returncode == 0:
                 with open(cls.version_file(), "w") as fp:
                     fp.write(cls.server_version())
-            else:
-                error_msg = ("An error occured while trying to install the Language Server. Check the console for "
-                    "possible error messages or consider to open an issue in the LSP-julia issue tracker on GitHub.")
-                sublime.error_message(error_msg)
         except Exception:
             shutil.rmtree(cls.basedir(), ignore_errors=True)
             raise
