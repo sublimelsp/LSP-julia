@@ -579,19 +579,23 @@ class LspJuliaPlugin(AbstractPlugin):
 
     @classmethod
     def additional_variables(cls) -> Optional[Dict[str, str]]:
-        return {'julia_exe': cls.julia_exe(), 'server_path': cls.basedir()}
+        return {'julia_exe': cls.julia_exe(), 'server_path': cls.serverdir()}
 
     @classmethod
     def basedir(cls) -> str:
-        return os.path.join(cls.storage_path(), "LSP-julia", "languageserver")
+        return os.path.join(cls.storage_path(), "LSP-julia")
+
+    @classmethod
+    def serverdir(cls) -> str:
+        return os.path.join(cls.basedir(), "languageserver")
 
     @classmethod
     def testrunnerdir(cls) -> str:
-        return os.path.join(cls.storage_path(), "LSP-julia", "testrunner")
+        return os.path.join(cls.basedir(), "testrunner")
 
     @classmethod
     def version_file(cls) -> str:
-        return os.path.join(cls.basedir(), "VERSION")
+        return os.path.join(cls.serverdir(), "VERSION")
 
     @classmethod
     def packagedir(cls) -> str:
@@ -636,10 +640,10 @@ class LspJuliaPlugin(AbstractPlugin):
     def install_or_update(cls) -> None:
         shutil.rmtree(cls.basedir(), ignore_errors=True)
         try:
-            os.makedirs(cls.basedir(), exist_ok=True)
+            os.makedirs(cls.serverdir(), exist_ok=True)
             for file in ("Project.toml", "Manifest.toml"):
                 ResourcePath.from_file_path(
-                    os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.basedir(), file))
+                    os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.serverdir(), file))
             # TODO Use cls.basedir() as DEPOT_PATH for language server
             os.makedirs(cls.testrunnerdir(), exist_ok=True)
             for file in ("Project.toml", "runtestitem.jl"):
@@ -649,7 +653,7 @@ class LspJuliaPlugin(AbstractPlugin):
                 cls.julia_exe(),
                 "--startup-file=no",
                 "--history-file=no",
-                "--project={}".format(cls.basedir()),
+                "--project={}".format(cls.serverdir()),
                 "--eval", "ENV[\"JULIA_SSL_CA_ROOTS_PATH\"] = \"\"; import Pkg; Pkg.instantiate()"
             ])
             if returncode == 0:
