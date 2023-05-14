@@ -4,6 +4,7 @@
 
 A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime Text with support for the [Julia language server](https://github.com/julia-vscode/LanguageServer.jl).
 
+
 ## Requirements & Installation
 
 * [Julia](https://julialang.org/) must be installed on your machine.
@@ -12,6 +13,7 @@ A plugin for the [LSP](https://packagecontrol.io/packages/LSP) client in Sublime
 * Install the [LSP package](https://packagecontrol.io/packages/LSP) and *LSP-julia* from Package Control.
   When a Julia file is opened for the first time after installing this package, the language server will automatically be installed via the Julia package manager (this can take 1-2 minutes).
 * Optionally install the [Terminus package](https://packagecontrol.io/packages/Terminus) from Package Control for a simple Julia REPL integration and some functionality to run code (see below).
+
 
 ## Features
 
@@ -62,3 +64,27 @@ To completely disable this feature, you can toggle off the following entry in th
 ```
 
 ![Testitem preview](img/testitem.png)
+
+
+## Frequently Asked Questions
+
+#### I have deleted or cleaned up my `.julia` directory. Now the language server doesn't start anymore.
+
+Delete the `LSP-julia` folder at the following location:
+* on Windows: `%LocalAppData%/Sublime Text/Package Storage/LSP-julia`
+* on Linux: `$XDG_CONFIG_DIR/sublime-text/Package Storage/LSP-julia`
+* on macOS: `~/Library/Application Support/Sublime Text/Package Storage/LSP-julia`
+
+Then restart Sublime Text and open a Julia file to re-install the language server.
+
+#### The embedded Julia REPL doesn't start if Julia was installed via juliaup.
+
+This seems to be a bug/limitation in the Python 3.3 API environment, which is used by the Terminus package, when resolving symlinks.
+
+As a workaround, you can manually specify the full path (without symlink) to the Julia executable in the LSP-julia package settings (*Preferences: LSP-julia Settings* from the command palette).
+Here is an example on Windows:
+```jsonc
+{
+    "julia_executable_path": "C:\\Users\\<username>\\.julia\\juliaup\\julia-1.9.0+0.x64.w64.mingw32\\bin\\julia.exe",
+}
+```
