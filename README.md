@@ -68,7 +68,7 @@ To completely disable this feature, you can toggle off the following entry in th
 
 ## Frequently Asked Questions
 
-#### I have deleted or cleaned up my `.julia` directory. Now the language server doesn't start anymore.
+### I have deleted or cleaned up my `.julia` directory. Now the language server doesn't start anymore.
 
 Delete the `LSP-julia` folder at the following location:
 * on Windows: `%LocalAppData%/Sublime Text/Package Storage/LSP-julia`
@@ -77,7 +77,7 @@ Delete the `LSP-julia` folder at the following location:
 
 Then restart Sublime Text and open a Julia file to re-install the language server.
 
-#### The embedded Julia REPL doesn't start if Julia was installed via juliaup.
+### The embedded Julia REPL doesn't start if Julia was installed via juliaup.
 
 This seems to be a bug/limitation in the Python 3.3 API environment, which is used by the Terminus package, when resolving symlinks.
 
