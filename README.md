@@ -72,7 +72,7 @@ To completely disable this feature, you can toggle off the following entry in th
 
 Delete the `LSP-julia` folder at the following location:
 * on Windows: `%LocalAppData%/Sublime Text/Package Storage/LSP-julia`
-* on Linux: `$XDG_CONFIG_DIR/sublime-text/Package Storage/LSP-julia`
+* on Linux: `~/.cache/sublime-text/Package Storage/LSP-julia`
 * on macOS: `~/Library/Application Support/Sublime Text/Package Storage/LSP-julia`
 
 Then restart Sublime Text and open a Julia file to re-install the language server.
