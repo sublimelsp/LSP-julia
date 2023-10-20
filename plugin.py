@@ -709,7 +709,7 @@ def plugin_unloaded() -> None:
     unregister_plugin(LspJuliaPlugin)
 
 
-class OpenFileEnhancedCommand(sublime_plugin.WindowCommand):
+class LspJuliaOpenFileCommand(sublime_plugin.WindowCommand):
     """ An enhanced version and wrapper of the built-in open_file command, which also supports modifier keys when used
     in form of a link in minihtml. """
 
@@ -1090,12 +1090,12 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             # https://github.com/sublimehq/sublime_text/issues/4800
             markdown_content = re.sub(
                 r"\[(.+?:\d+)\]\(file:///.+?#\d+\)",
-                r"""<a href='subl:open_file_enhanced {"file": "\1", "encoded_position": true}'>\1</a>""",
+                r"""<a href='subl:lsp_julia_open_file {"file": "\1", "encoded_position": true}'>\1</a>""",
                 markdown_content)
         else:
             markdown_content = re.sub(
                 r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)",
-                r"""<a href='subl:open_file_enhanced {"file": "\1"}'>\1\2</a>""",
+                r"""<a href='subl:lsp_julia_open_file {"file": "\1"}'>\1\2</a>""",
                 markdown_content)
 
         content = frontmatter + toolbar + markdown_content
