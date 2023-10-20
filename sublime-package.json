@@ -40,11 +40,6 @@
                 }
               }
             },
-            "show_environment_status": {
-              "description": "Show name of the active Julia environment in the status bar.",
-              "type": "boolean",
-              "default": true
-            },
             "settings": {
               "description": "Language server configurations.",
               "type": "object",

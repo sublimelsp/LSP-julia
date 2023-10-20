@@ -8,9 +8,6 @@
         "JULIA_NUM_THREADS": "4"
     },
 
-    // Show name of the active Julia project/environment in the status bar
-    "show_environment_status": true,
-
     // Language server configurations
     "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer; runserver()"],
     "selector": "source.julia",

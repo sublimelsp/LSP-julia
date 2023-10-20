@@ -568,10 +568,9 @@ class LspJuliaPlugin(AbstractPlugin):
         if not session:
             return
         self.testitems = TestItemStorage(session.window)
-        if sublime.load_settings(SETTINGS_FILE).get("show_environment_status"):
-            env_name = os.path.basename(session.working_directory) if session.working_directory else \
-                LspJuliaPlugin.default_julia_environment()
-            session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
+        env_name = os.path.basename(session.working_directory) if session.working_directory else \
+            LspJuliaPlugin.default_julia_environment()
+        session.set_config_status_async(env_name)
 
     @classmethod
     def name(cls) -> str:
@@ -767,9 +766,8 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
         if not session:
             return
         session.send_notification(Notification("julia/activateenvironment", {"envPath": env_path}))
-        if sublime.load_settings(SETTINGS_FILE).get("show_environment_status"):
-            env_name = os.path.basename(env_path)
-            session.set_window_status_async(STATUS_BAR_KEY, "Julia env: {}".format(env_name))
+        env_name = os.path.basename(env_path)
+        session.set_config_status_async(env_name)
 
     def input(self, args: dict) -> Optional[sublime_plugin.ListInputHandler]:
         if 'files' in args:  # command was invoked from the side bar context menu
