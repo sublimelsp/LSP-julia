@@ -162,7 +162,7 @@ TESTITEM_KINDS = {
     TestItemStatus.Errored: KIND_ERRORED
 }  # type: Dict[TestItemStatus, Tuple[int, str, str]]
 
-SUBLIME_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
+ST_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
 SETTINGS_FILE = "LSP-julia.sublime-settings"
 SESSION_NAME = "julia"
 STATUS_BAR_KEY = "lsp_julia_environment"
@@ -1028,7 +1028,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         else:
             active_view = self.window.active_view()
             # If there is not yet a sheet for the Julia documentation, open it in side-by-side mode
-            if SUBLIME_VERSION >= 4135:
+            if ST_VERSION >= 4135:
                 sheet = self.window.new_html_sheet("Julia Documentation", "", flags=sublime.ADD_TO_SELECTION)
             else:
                 sheet = self.window.new_html_sheet("Julia Documentation", "")
@@ -1082,7 +1082,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         # Replace Markdown links with `file:` URI with actual HTML links and `subl:open_file` command, because the
         # `file:` protocol is not supported for links in minihtml and there is no way to utilize a callback function for
         # links in a HtmlSheet
-        if SUBLIME_VERSION >= 4127:
+        if ST_VERSION >= 4127:
             # The `encoded_position` argument for the open_file command was introduced in ST 4127
             # https://github.com/sublimehq/sublime_text/issues/4800
             markdown_content = re.sub(
