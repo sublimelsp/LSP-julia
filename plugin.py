@@ -714,12 +714,10 @@ class LspJuliaOpenFileCommand(sublime_plugin.WindowCommand):
     in form of a link in minihtml. """
 
     def run(self, event: Optional[dict] = None, **kwargs) -> None:
-        add_to_selection = kwargs.get('add_to_selection', False)
-        if event and not add_to_selection:
+        if event and kwargs.get('add_to_selection') is None:
             modifier_keys = event.get('modifier_keys', {})
             if 'primary' in modifier_keys or 'shift' in modifier_keys:
-                add_to_selection = True
-        kwargs['add_to_selection'] = add_to_selection
+                kwargs['add_to_selection'] = True
         self.window.run_command('open_file', kwargs)
 
     def want_event(self) -> bool:
