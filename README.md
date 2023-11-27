@@ -9,12 +9,13 @@ A plugin for the LSP client in Sublime Text with support for the [Julia language
 
 The following should be installed:
 
-* A [Julia](https://julialang.org/) installation
-  > [!NOTE]
-  > If the `julia` executable is not in your PATH, you need to provide the full path to the executable in the LSP-julia package settings.
+* [Julia](https://julialang.org/)
 * The [Julia package](https://packagecontrol.io/packages/Julia) from Package Control
 * The [LSP](https://packagecontrol.io/packages/LSP) and [LSP-julia](https://packagecontrol.io/packages/LSP-julia) packages from Package Control
-* Optionally the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a basic Julia REPL integration and the ability to run blocks of code with a key binding
+* Optionally the [Terminus](https://packagecontrol.io/packages/Terminus) package from Package Control for a basic Julia REPL integration and the ability to run code blocks with a key binding
+
+> [!NOTE]
+> If the `julia` executable is not in your PATH, you need to provide the full path to the executable in the LSP-julia package settings.
 
 When a Julia file is opened for the first time after installing LSP-julia, the language server will automatically be installed with the Julia package manager. This can take a few minutes.
 
@@ -73,7 +74,7 @@ If you want to disable this feature completely, you can toggle off the following
 ![Testitem preview](img/testitem.png)
 
 
-## Frequently Asked Questions
+## Troubleshooting
 
 ### I have deleted or cleaned up my `.julia` directory. Now the language server doesn't start anymore.
 
