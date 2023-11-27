@@ -268,6 +268,7 @@ def prepare_markdown(content: str) -> str:
     content = re.sub(
         r"\[`(.+?)`\]\(@ref.*?\)", r"""<a href='subl:julia_search_documentation {"word": "\1"}'>`\1`</a>""", content)
     # Remove parameters after fenced code block language identifier
+    content = re.sub("```julia;.*?\n", "```julia\n", content)
     content = re.sub("```jldoctest;.*?\n", "```jldoctest\n", content)
     return content
 
