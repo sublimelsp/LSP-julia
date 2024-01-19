@@ -1086,13 +1086,13 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             # The `encoded_position` argument for the open_file command was introduced in ST 4127
             # https://github.com/sublimehq/sublime_text/issues/4800
             markdown_content = re.sub(
-                r"\[(.+?:\d+)\]\(file:///.+?#\d+\)",
-                r"""<a href='subl:lsp_julia_open_file {"file": "\1", "encoded_position": true}'>\1</a>""",
+                r"\[(.+?:\d+)\]\((file:///.+?)#(\d+)\)",
+                self._link_replacement,
                 markdown_content)
         else:
             markdown_content = re.sub(
-                r"\[(.+?)(:\d+)\]\(file:///.+?#\d+\)",
-                r"""<a href='subl:lsp_julia_open_file {"file": "\1"}'>\1\2</a>""",
+                r"\[(.+?:\d+)\]\((file:///.+?)#\d+\)",
+                lambda match: self._link_replacement(match, False),
                 markdown_content)
 
         content = frontmatter + toolbar + markdown_content
@@ -1102,6 +1102,13 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
     def input(self, args: dict) -> Optional[sublime_plugin.TextInputHandler]:
         if "word" not in args:
             return WordInputHandler()
+
+    def _link_replacement(self, match: 're.Match', encoded_position: bool = True) -> str:
+        path = parse_uri(match.group(2))[1].replace('\\', '\\\\')
+        if encoded_position:
+            return """<a href='subl:lsp_julia_open_file {{"file": "{}:{}", "encoded_position": true}}'>{}</a>""".format(
+                path, match.group(3), match.group(1))
+        return """<a href='subl:lsp_julia_open_file {{"file": "{}"}}'>{}</a>""".format(path, match.group(1))
 
 
 class WordInputHandler(sublime_plugin.TextInputHandler):
