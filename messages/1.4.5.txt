@@ -1,4 +1,4 @@
-Version 1.4.4 (2024-??-??)
+Version 1.4.4 (2024-04-06)
 --------------------------
 
   * Updated the language server to the latest version.
