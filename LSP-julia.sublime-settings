@@ -68,5 +68,13 @@
         "julia.lint.typeparam": true,
         // Check that all declared arguments are used within the function body.
         "julia.lint.useoffuncargs": true,
+        // Enable display of static inlay hints. Please note that inlay hints also
+        // need to be enabled in the LSP package settings ("show_inlay_hints": true).
+        "julia.inlayHints.static.enabled": true,
+        // Enable type hints for variable definitions.
+        "julia.inlayHints.static.variableTypes.enabled": true,
+        // Enable name hints for function parameters.
+        // Valid values: "none", "literals", "all"
+        "julia.inlayHints.static.parameterNames.enabled": "literals",
     }
 }

@@ -1,0 +1,11 @@
+Version 1.4.4 (2024-??-??)
+--------------------------
+
+  * Updated the language server to the latest version.
+
+  * The language server now supports inlay hints, which can show the types of
+    variables and function parameters. To enable them, you need to set
+    "show_inlay_hints" to true in the LSP settings ("Preferences: LSP Settings"
+    from the command palette). Inlay hints are disabled by default because there
+    are a few known bugs and limitations. More specific options for inlay hints
+    are available in the LSP-julia settings.

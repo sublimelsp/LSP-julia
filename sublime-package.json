@@ -125,6 +125,22 @@
                   "type": "boolean",
                   "default": true
                 },
+                "julia.inlayHints.static.enabled": {
+                  "markdownDescription": "Enable display of static inlay hints.\n\nPlease note that you also need to enable inlay hints in the LSP package settings (*Preferences: LSP Settings* from the command palette): `\"show_inlay_hints\": true`",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.inlayHints.static.variableTypes.enabled": {
+                  "markdownDescription": "Enable type hints for variable definitions:\n\n```julia\nfoo #= ::Int64 =# = 42\n```",
+                  "type": "boolean",
+                  "default": true
+                },
+                "julia.inlayHints.static.parameterNames.enabled": {
+                  "markdownDescription": "Enable name hints for function parameters:\n\n```julia\nfoo(#= bar: =# 42)\n```",
+                  "type": "string",
+                  "default": "literals",
+                  "enum": ["none", "literals", "all"]
+                },
                 "julia.format.calls": {
                   "$ref": "#/$defs/format_deprecated"
                 },
