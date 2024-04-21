@@ -801,14 +801,15 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     def placeholder(self) -> str:
         return "Select Julia environment"
 
-    def preview(self, value: str | int | None) -> sublime.Html | str | None:
-        if value == SELECT_FOLDER_DIALOG_FLAG:
+    def preview(self, text: str | int | None) -> sublime.Html | str:
+        if text == SELECT_FOLDER_DIALOG_FLAG:
             return "Open a folder picker dialog to select a Julia project"
-        elif value:
-            return sublime.Html("<i>{}</i>".format(value))
+        elif text:
+            return sublime.Html("<i>{}</i>".format(text))
+        return ""
 
-    def validate(self, value: str | int | None) -> bool:
-        return value is not None
+    def validate(self, text: str | int | None) -> bool:
+        return text is not None
 
 
 class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
@@ -982,7 +983,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
     _next_words = deque()
     _current_word: str | None = None
 
-    def run(self, word: str) -> None:
+    def run(self, word: str) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
         if word == "__back":
             try:
                 word = self._last_words.pop()
@@ -1161,7 +1162,7 @@ class JuliaRunTestitemCommand(LspWindowCommand):
         session = self.session()
         if not session:
             return
-        plugin = cast(LspJuliaPlugin, session._plugin)
+        plugin = cast(LspJuliaPlugin, session._plugin)  # pyright: ignore[reportPrivateUsage]
         items: List[sublime.QuickPanelItem] = []
         self.hrefs: List[str] = []
         for filepath, details in plugin.testitems.testitemdetails.items():
@@ -1181,7 +1182,7 @@ class JuliaRunTestitemCommand(LspWindowCommand):
         session = self.session()
         if session is None:
             return False
-        plugin = cast(LspJuliaPlugin, session._plugin)
+        plugin = cast(LspJuliaPlugin, session._plugin)  # pyright: ignore[reportPrivateUsage]
         if plugin.testitems.pending_result:
             return False
         return any(testitem for testitems in plugin.testitems.testitemdetails.values()
