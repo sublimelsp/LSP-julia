@@ -1,3 +1,4 @@
+from __future__ import annotations
 from LSP.plugin import AbstractPlugin
 from LSP.plugin import ClientConfig
 from LSP.plugin import css
@@ -18,7 +19,7 @@ from LSP.plugin.core.views import uri_from_view
 from collections import deque
 from functools import partial
 from sublime_lib import ResourcePath
-from typing import Any, Dict, List, Optional, Set, Tuple, TypedDict, Union
+from typing import Any, Dict, List, Set, Tuple, TypedDict
 from typing import cast
 from typing_extensions import NotRequired
 from urllib.parse import parse_qs, urldefrag
@@ -57,27 +58,27 @@ class TestserverRunTestitemRequestParams(TypedDict):
 
 class TestMessage(TypedDict):
     message: str
-    location: Optional[Location]
+    location: Location | None
 
 class TestserverRunTestitemRequestParamsReturn(TypedDict):
     status: str
-    message: Optional[List[TestMessage]]
-    duration: Optional[float]
+    message: List[TestMessage] | None
+    duration: float | None
 
 class TestItemDetail(TypedDict):
     id: str
     label: str
     range: Range
-    code: Optional[str]
-    code_range: Optional[Range]
-    option_default_imports: Optional[bool]
-    option_tags: Optional[List[str]]
+    code: str | None
+    code_range: Range | None
+    option_default_imports: bool | None
+    option_tags: List[str] | None
 
 class TestSetupDetail(TypedDict):
     name: str
     range: Range
-    code: Optional[str]
-    code_range: Optional[Range]
+    code: str | None
+    code_range: Range | None
 
 class TestErrorDetail(TypedDict):
     range: Range
@@ -132,29 +133,29 @@ CLASS_INSIDE_WORD = 512
 # CLASS_BRACKET_OPEN = 4096
 # CLASS_BRACKET_CLOSE = 8192
 
-TESTITEM_ICONS = {
+TESTITEM_ICONS: Dict[TestItemStatus, str] = {
     TestItemStatus.Passed: 'Packages/LSP-julia/icons/passed.png',
     TestItemStatus.Failed: 'Packages/LSP-julia/icons/failed.png',
     TestItemStatus.Errored: 'Packages/LSP/icons/error.png',
     TestItemStatus.Undetermined: '',
     TestItemStatus.Pending: 'Packages/LSP-julia/icons/stopwatch.png',
     TestItemStatus.Invalid: ''
-}  # type: Dict[TestItemStatus, str]
+}
 
-TESTITEM_SCOPES = {
+TESTITEM_SCOPES: Dict[TestItemStatus, str] = {
     TestItemStatus.Passed: 'region.greenish markup.testitem.passed.lsp',
     TestItemStatus.Failed: 'region.redish markup.error markup.testitem.failed.lsp',
     TestItemStatus.Errored: 'region.redish markup.error markup.testitem.errored.lsp',
     TestItemStatus.Undetermined: 'region.cyanish markup.testitem.undetermined.lsp',
     TestItemStatus.Pending: 'region.yellowish markup.testitem.pending.lsp',
     TestItemStatus.Invalid: 'region.redish markup.error markup.testitem.invalid.lsp'
-}  # type: Dict[TestItemStatus, str]
+}
 
-TESTITEM_KINDS = {
+TESTITEM_KINDS: Dict[TestItemStatus, Tuple[int, str, str]] = {
     TestItemStatus.Passed: KIND_PASSED,
     TestItemStatus.Failed: KIND_FAILED,
     TestItemStatus.Errored: KIND_ERRORED
-}  # type: Dict[TestItemStatus, Tuple[int, str, str]]
+}
 
 ST_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
 SETTINGS_FILE = "LSP-julia.sublime-settings"
@@ -165,7 +166,7 @@ JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
 
-def find_output_view(window: sublime.Window, name: str) -> Optional[sublime.View]:
+def find_output_view(window: sublime.Window, name: str) -> sublime.View | None:
     for view in window.views():
         if view.name() == name:
             return view
@@ -233,7 +234,7 @@ def is_julia_environment(folder_path: str) -> bool:
         os.path.isfile(os.path.join(folder_path, "JuliaProject.toml"))
 
 
-def find_julia_environment(folder_path: str) -> Optional[str]:
+def find_julia_environment(folder_path: str) -> str | None:
     """
     Search through parent directories for a Julia project environment.
     """
@@ -281,11 +282,11 @@ class TestItemStorage:
     def __init__(self, window: sublime.Window) -> None:
         self.window = window
         self.pending_result = False
-        self.testitemparams = {}  # type: Dict[str, Dict[str, Any]]
-        self.testitemdetails = {}  # type: Dict[str, List[TestItemDetail]]
-        self.testerrordetails = {}  # type: Dict[str, List[TestErrorDetail]]
-        self.testitemstatus = {}  # type: Dict[str, List[TestserverRunTestitemRequestParamsReturn]]
-        self.error_keys = {}  # type: Dict[str, Set[str]]
+        self.testitemparams: Dict[str, Dict[str, Any]] = {}
+        self.testitemdetails: Dict[str, List[TestItemDetail]] = {}
+        self.testerrordetails: Dict[str, List[TestErrorDetail]] = {}
+        self.testitemstatus: Dict[str, List[TestserverRunTestitemRequestParamsReturn]] = {}
+        self.error_keys: Dict[str, Set[str]] = {}
 
     def update(self, uri: DocumentUri, params: PublishTestsParams) -> None:
         # Use the filepath instead of the URI as the key for storing the testitems, because on Windows the language
@@ -303,11 +304,11 @@ class TestItemStorage:
                 del self.testitemstatus[filepath]
                 self.render_testitems(uri)
             return
-        status = [{
+        status: List[TestserverRunTestitemRequestParamsReturn] = [{
             'status': TestItemStatus.Undetermined,
             'message': None,
             'duration': None
-        } for _ in testitems]  # type: List[TestserverRunTestitemRequestParamsReturn]
+        } for _ in testitems]
         if not old_params or \
             any(old_params[key] != params[key] for key in ('project_path', 'package_path', 'package_name')):
             # If there were no testitems for this file already stored, or one of the major parameters changed, copy the
@@ -340,37 +341,37 @@ class TestItemStorage:
         self.testitemstatus[filepath] = status
         self.render_testitems(uri)
 
-    def stored_version(self, uri: DocumentUri) -> Optional[int]:
+    def stored_version(self, uri: DocumentUri) -> int | None:
         filepath = parse_uri(uri)[1]
         params = self.testitemparams.get(filepath)
         if params:
             return params['version']
         return None
 
-    def render_testitems(self, uri: DocumentUri, new_result_idx: Optional[int] = None) -> None:
+    def render_testitems(self, uri: DocumentUri, new_result_idx: int | None = None) -> None:
         filepath = parse_uri(uri)[1]
         view = self.window.find_open_file(filepath)  # This doesn't work if the tab was dragged out of the window...
         if view and not view.is_loading():
-            regions_by_status = {
+            regions_by_status: Dict[TestItemStatus, List[sublime.Region]] = {
                 TestItemStatus.Passed: [],
                 TestItemStatus.Failed: [],
                 TestItemStatus.Errored: [],
                 TestItemStatus.Undetermined: [],
                 TestItemStatus.Pending: [],
                 TestItemStatus.Invalid: []
-            }  # type: Dict[TestItemStatus, List[sublime.Region]]
+            }
             if filepath not in self.testitemdetails:
                 for status in regions_by_status:
                     view.erase_regions('lsp_julia_testitem_{}'.format(status))
                 return
-            annotations = {
+            annotations: Dict[TestItemStatus, List[str]] = {
                 TestItemStatus.Passed: [],
                 TestItemStatus.Failed: [],
                 TestItemStatus.Errored: [],
                 TestItemStatus.Undetermined: [],
                 TestItemStatus.Pending: [],
                 TestItemStatus.Invalid: []
-            }  # type: Dict[TestItemStatus, List[str]]
+            }
             version = self.testitemparams[filepath]['version']
             error_annotation_color = view.style_for_scope(TESTITEM_SCOPES[TestItemStatus.Errored])['foreground']
             for idx, item, result in \
@@ -437,7 +438,7 @@ class TestItemStorage:
             view.erase_regions(key)
             self.error_keys[filepath].discard(key)
 
-    def clear_error_annotations(self, uri: DocumentUri, testitem_id: Optional[str] = "") -> None:
+    def clear_error_annotations(self, uri: DocumentUri, testitem_id: str | None = "") -> None:
         filepath = parse_uri(uri)[1]
         view = self.window.find_open_file(filepath)
         if view:
@@ -448,7 +449,7 @@ class TestItemStorage:
 
     def run_testitem_request_params(
         self, uri: DocumentUri, idx: int
-    ) -> Optional[TestserverRunTestitemRequestExtendedParams]:
+    ) -> TestserverRunTestitemRequestExtendedParams | None:
         filepath = parse_uri(uri)[1]
         params = self.testitemparams.get(filepath)
         if not params:
@@ -572,7 +573,7 @@ class LspJuliaPlugin(AbstractPlugin):
         return SESSION_NAME
 
     @classmethod
-    def additional_variables(cls) -> Optional[Dict[str, str]]:
+    def additional_variables(cls) -> Dict[str, str] | None:
         return {'julia_exe': cls.julia_exe(), 'server_path': cls.serverdir()}
 
     @classmethod
@@ -664,7 +665,7 @@ class LspJuliaPlugin(AbstractPlugin):
         initiating_view: sublime.View,
         workspace_folders: List[WorkspaceFolder],
         configuration: ClientConfig
-    ) -> Optional[str]:
+    ) -> str | None:
         # The working directory is used by the language server to find the Julia project environment, if not explicitly
         # given as a parameter of runserver() or as a command line argument. We can make use of this to avoid adjusting
         # the "command" setting everytime with a new environment argument when the server starts.
@@ -707,7 +708,7 @@ class LspJuliaOpenFileCommand(sublime_plugin.WindowCommand):
     """ An enhanced version and wrapper of the built-in open_file command, which also supports modifier keys when used
     in form of a link in minihtml. """
 
-    def run(self, event: Optional[dict] = None, **kwargs) -> None:
+    def run(self, event: dict | None = None, **kwargs) -> None:
         if event and kwargs.get('add_to_selection') is None:
             modifier_keys = event.get('modifier_keys', {})
             if 'primary' in modifier_keys or 'shift' in modifier_keys:
@@ -747,7 +748,7 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
             return len(files) == 1 and os.path.basename(files[0]) in ('Project.toml', 'JuliaProject.toml')
         return True
 
-    def on_select_folder(self, folder_path: Optional[str]) -> None:
+    def on_select_folder(self, folder_path: str | None) -> None:
         if folder_path:
             if is_julia_environment(folder_path):
                 self.activate_environment(folder_path)
@@ -762,7 +763,7 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
         env_name = os.path.basename(env_path)
         session.set_config_status_async(env_name)
 
-    def input(self, args: dict) -> Optional[sublime_plugin.ListInputHandler]:
+    def input(self, args: dict) -> sublime_plugin.ListInputHandler | None:
         if 'files' in args:  # command was invoked from the side bar context menu
             return None
         if 'env_path' not in args:  # command was invoked from the command palette
@@ -777,7 +778,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         self.workspace_folders = workspace_folders
 
     def list_items(self) -> List[sublime.ListInputItem]:
-        items = []  # type: List[sublime.ListInputItem]
+        items: List[sublime.ListInputItem] = []
         # Add option for folder picker dialog
         items.append(sublime.ListInputItem("(pick a folder…)", SELECT_FOLDER_DIALOG_FLAG))
         # Collect all folder names and corresponding paths in .julia/environments
@@ -800,13 +801,13 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
     def placeholder(self) -> str:
         return "Select Julia environment"
 
-    def preview(self, value: Union[str, int, None]) -> Union[sublime.Html, str, None]:
+    def preview(self, value: str | int | None) -> sublime.Html | str | None:
         if value == SELECT_FOLDER_DIALOG_FLAG:
             return "Open a folder picker dialog to select a Julia project"
         elif value:
             return sublime.Html("<i>{}</i>".format(value))
 
-    def validate(self, value) -> bool:
+    def validate(self, value: str | int | None) -> bool:
         return value is not None
 
 
@@ -859,7 +860,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
 
     session_name = SESSION_NAME
 
-    def is_enabled(self, event: Optional[dict] = None, point: Optional[int] = None) -> bool:
+    def is_enabled(self, event: dict | None = None, point: int | None = None) -> bool:
         # Language server must be ready
         if not super().is_enabled(event, point):
             return False
@@ -871,7 +872,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
             return False
         return True
 
-    def run(self, edit: sublime.Edit, event: Optional[dict] = None, point: Optional[int] = None) -> None:
+    def run(self, edit: sublime.Edit, event: dict | None = None, point: int | None = None) -> None:
         window = self.view.window()
         if not window:
             return
@@ -975,11 +976,11 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
     session_name = SESSION_NAME
 
-    _sheet_id = None  # type: Optional[int]
+    _sheet_id: int | None = None
 
     _last_words = deque(maxlen=100)
     _next_words = deque()
-    _current_word = None  # type: Optional[str]
+    _current_word: str | None = None
 
     def run(self, word: str) -> None:
         if word == "__back":
@@ -1058,7 +1059,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         })
 
         # Add navigation toolbar with "Back", "Forward" and "Search" links
-        toolbar_links = []  # type: List[str]
+        toolbar_links: List[str] = []
 
         toolbar_links.append(
             "<a title='Go back one page' href='{}'>Back</a>".format(
@@ -1093,11 +1094,11 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
         mdpopups.update_html_sheet(sheet, content, css=css().sheets, wrapper_class="lsp_sheet")
 
-    def input(self, args: dict) -> Optional[sublime_plugin.TextInputHandler]:
+    def input(self, args: dict) -> sublime_plugin.TextInputHandler | None:
         if "word" not in args:
             return WordInputHandler()
 
-    def _link_replacement(self, match: 're.Match', encoded_position: bool = True) -> str:
+    def _link_replacement(self, match: re.Match, encoded_position: bool = True) -> str:
         path = parse_uri(match.group(2))[1].replace('\\', '\\\\')
         if encoded_position:
             return """<a href='subl:lsp_julia_open_file {{"file": "{}:{}", "encoded_position": true}}'>{}</a>""".format(
@@ -1106,6 +1107,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
 
 class WordInputHandler(sublime_plugin.TextInputHandler):
+
     def placeholder(self) -> str:
         return "Search Julia docs"
 
@@ -1121,7 +1123,7 @@ class JuliaShowDocumentationCommand(LspTextCommand):
 
     session_name = SESSION_NAME
 
-    def is_enabled(self, event: Optional[dict] = None, point: Optional[int] = None) -> bool:
+    def is_enabled(self, event: dict | None = None, point: int | None = None) -> bool:
         # Language server must be ready
         if not super().is_enabled(event, point):
             return False
@@ -1136,10 +1138,10 @@ class JuliaShowDocumentationCommand(LspTextCommand):
         # strings filled with whitespace or punctuation symbols.
         return bool(self.view.classify(pt) & (sublime.CLASS_WORD_START | sublime.CLASS_WORD_END | CLASS_INSIDE_WORD))
 
-    def is_visible(self, event: Optional[dict] = None, point: Optional[int] = None) -> bool:
+    def is_visible(self, event: dict | None = None, point: int | None = None) -> bool:
         return self.is_enabled(event, point)
 
-    def run(self, edit: sublime.Edit, event: Optional[dict] = None, point: Optional[int] = None) -> None:
+    def run(self, edit: sublime.Edit, event: dict | None = None, point: int | None = None) -> None:
         if event is not None and "x" in event and "y" in event:
             pt = self.view.window_to_text((event["x"], event["y"]))
         else:
@@ -1160,8 +1162,8 @@ class JuliaRunTestitemCommand(LspWindowCommand):
         if not session:
             return
         plugin = cast(LspJuliaPlugin, session._plugin)
-        items = []  # type: List[sublime.QuickPanelItem]
-        self.hrefs = []  # type: List[str]
+        items: List[sublime.QuickPanelItem] = []
+        self.hrefs: List[str] = []
         for filepath, details in plugin.testitems.testitemdetails.items():
             for idx, testitem in enumerate(details):
                 status = cast(TestItemStatus, plugin.testitems.testitemstatus[filepath][idx]['status'])
