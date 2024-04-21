@@ -10,8 +10,7 @@ from LSP.plugin import Response
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.core.protocol import DocumentUri, Location, Point, Position, Range, TextDocumentIdentifier
-from LSP.plugin.core.typing import Any, Dict, List, NotRequired, Optional, Set, StrEnum, Tuple, TypedDict, Union
-from LSP.plugin.core.typing import cast
+from LSP.plugin.core.typing import StrEnum
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import range_to_region
 from LSP.plugin.core.views import text_document_position_params
@@ -19,6 +18,9 @@ from LSP.plugin.core.views import uri_from_view
 from collections import deque
 from functools import partial
 from sublime_lib import ResourcePath
+from typing import Any, Dict, List, Optional, Set, Tuple, TypedDict, Union
+from typing import cast
+from typing_extensions import NotRequired
 from urllib.parse import parse_qs, urldefrag
 import html
 import importlib
