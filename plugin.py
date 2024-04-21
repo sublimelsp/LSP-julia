@@ -39,80 +39,72 @@ import traceback
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
 # https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
-VersionedTextDocumentPositionParams = TypedDict('VersionedTextDocumentPositionParams', {
-    'textDocument': TextDocumentIdentifier,
-    'version': int,
-    'position': Position
-})
+class VersionedTextDocumentPositionParams(TypedDict):
+    textDocument: TextDocumentIdentifier
+    version: int
+    position: Position
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/testing/testFeature.ts
 # https://github.com/julia-vscode/julia-vscode/blob/main/scripts/packages/VSCodeTestServer/src/testserver_protocol.jl
-TestserverRunTestitemRequestParams = TypedDict('TestserverRunTestitemRequestParams', {
-    'uri': str,
-    'name': str,
-    'packageName': str,
-    'useDefaultUsings': bool,
-    'line': int,
-    'column': int,
-    'code': str
-})
+class TestserverRunTestitemRequestParams(TypedDict):
+    uri: str
+    name: str
+    packageName: str
+    useDefaultUsings: bool
+    line: int
+    column: int
+    code: str
 
-TestMessage = TypedDict('TestMessage', {
-    'message': str,
-    'location': Optional[Location]
-})
+class TestMessage(TypedDict):
+    message: str
+    location: Optional[Location]
 
-TestserverRunTestitemRequestParamsReturn = TypedDict('TestserverRunTestitemRequestParamsReturn', {
-    'status': str,
-    'message': Optional[List[TestMessage]],
-    'duration': Optional[float]
-})
+class TestserverRunTestitemRequestParamsReturn(TypedDict):
+    status: str
+    message: Optional[List[TestMessage]]
+    duration: Optional[float]
 
-TestItemDetail = TypedDict('TestItemDetail', {
-    'id': str,
-    'label': str,
-    'range': Range,
-    'code': Optional[str],
-    'code_range': Optional[Range],
-    'option_default_imports': Optional[bool],
-    'option_tags': Optional[List[str]]
-})
+class TestItemDetail(TypedDict):
+    id: str
+    label: str
+    range: Range
+    code: Optional[str]
+    code_range: Optional[Range]
+    option_default_imports: Optional[bool]
+    option_tags: Optional[List[str]]
 
-TestSetupDetail = TypedDict('TestSetupDetail', {
-    'name': str,
-    'range': Range,
-    'code': Optional[str],
-    'code_range': Optional[Range]
-})
+class TestSetupDetail(TypedDict):
+    name: str
+    range: Range
+    code: Optional[str]
+    code_range: Optional[Range]
 
-TestErrorDetail = TypedDict('TestErrorDetail', {
-    'range': Range,
-    'error': str
-})
+class TestErrorDetail(TypedDict):
+    range: Range
+    error: str
 
-PublishTestsParams = TypedDict('PublishTestsParams', {
-    'uri': DocumentUri,
-    'version': NotRequired[int],
-    'project_path': str,
-    'package_path': str,
-    'package_name': str,
-    'testitemdetails': List[TestItemDetail],
-    'testsetupdetails': List[TestSetupDetail],
-    'testerrordetails': List[TestErrorDetail]
-})
+class PublishTestsParams(TypedDict):
+    uri: DocumentUri
+    version: NotRequired[int]
+    project_path: str
+    package_path: str
+    package_name: str
+    testitemdetails: List[TestItemDetail]
+    testsetupdetails: List[TestSetupDetail]
+    testerrordetails: List[TestErrorDetail]
+
 
 # Parameters for the runtestitem.jl script, which also requires project_path and package_path
-TestserverRunTestitemRequestExtendedParams = TypedDict('TestserverRunTestitemRequestExtendedParams', {
-    'uri': str,
-    'name': str,
-    'packageName': str,
-    'useDefaultUsings': bool,
-    'line': int,
-    'column': int,
-    'code': str,
-    'project_path': str,
-    'package_path': str
-})
+class TestserverRunTestitemRequestExtendedParams(TypedDict):
+    uri: str
+    name: str
+    packageName: str
+    useDefaultUsings: bool
+    line: int
+    column: int
+    code: str
+    project_path: str
+    package_path: str
 
 
 class TestItemStatus(StrEnum):
