@@ -169,9 +169,8 @@ CELL_DELIMITERS = ("##", r"#%%", r"# %%")
 
 
 # Workaround until Terminus uses the Python 3.8 API environment
-def is_terminus_installed() -> bool:
-    return os.path.isfile(os.path.join(INSTALLED_PACKAGES_PATH, 'Terminus.sublime-package')) or \
-        os.path.isdir(os.path.join(PACKAGES_PATH, 'Terminus'))
+IS_TERMINUS_INSTALLED = os.path.isfile(os.path.join(INSTALLED_PACKAGES_PATH, 'Terminus.sublime-package')) or \
+    os.path.isdir(os.path.join(PACKAGES_PATH, 'Terminus'))
 
 
 def find_output_view(window: sublime.Window, name: str) -> sublime.View | None:
@@ -828,7 +827,7 @@ class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
     def is_enabled(self) -> bool:
         # return importlib.find_loader("Terminus") is not None
         # Workaround until Terminus uses the Python 3.8 API environment
-        return is_terminus_installed()
+        return IS_TERMINUS_INSTALLED
 
     def run(self, panel: bool = True) -> None:
         repl_view = find_output_view(self.window, JULIA_REPL_NAME)
@@ -878,7 +877,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         # Terminus package must be installed
         # if not importlib.find_loader("Terminus"):
         # Workaround until Terminus uses the Python 3.8 API environment
-        if not is_terminus_installed():
+        if not IS_TERMINUS_INSTALLED:
             return False
         # cursor must not be at end of file
         if self.view.sel()[0].b == self.view.size():
@@ -931,7 +930,7 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
         # Terminus package must be installed
         # if not importlib.find_loader("Terminus"):
         # Workaround until Terminus uses the Python 3.8 API environment
-        if not is_terminus_installed():
+        if not IS_TERMINUS_INSTALLED:
             return False
         # cursor must not be at end of file
         if self.view.sel()[0].b == self.view.size():
