@@ -743,7 +743,9 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
             return
         env_path = kwargs.get('env_path')
         if env_path == SELECT_FOLDER_DIALOG_FLAG:
-            sublime.select_folder_dialog(self.on_select_folder, multi_select=False)  # pyright: ignore
+            starting_dir = os.path.dirname(self.window.active_view().file_name())
+            sublime.select_folder_dialog(self.on_select_folder, starting_dir,
+                                         multi_select=False)  # pyright: ignore
         elif env_path:
             self.activate_environment(env_path)
 
@@ -795,10 +797,19 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
             if os.path.isdir(os.path.join(julia_environments_path, env))
         ]
         env_paths = [os.path.join(julia_environments_path, env) for env in env_names]
-        # Add workspace folders if they are valid Julia project environments
+        # Add all environments withing a working folder.
         for folder in self.workspace_folders:
-            if folder.path not in env_paths and is_julia_environment(folder.path):
-                items.append(sublime.ListInputItem(folder.name, folder.path, kind=KIND_WORKSPACE_FOLDER))
+            for subdir, dirs, files in os.walk(folder.path):
+                folderpath = os.path.join(folder.path, subdir)
+                if folderpath not in env_paths and is_julia_environment(folderpath):
+                    if os.path.relpath(subdir, folder.path) == '.':
+                        env_name = os.path.join(os.path.basename(folder.path))
+                    else:
+                        env_name = os.path.join(os.path.basename(
+                            folder.path), os.path.relpath(subdir, folder.path))
+                    items.append(sublime.ListInputItem(
+                        env_name, folderpath, kind=KIND_WORKSPACE_FOLDER))
+
         # Add default Julia environments from .julia/environments
         items.extend([
             sublime.ListInputItem(name, path, kind=KIND_DEFAULT_ENVIRONMENT) for name, path in zip(env_names, env_paths)
