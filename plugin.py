@@ -800,13 +800,15 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         # Add all environments withing a working folder.
         for folder in self.workspace_folders:
             for subdir, dirs, files in os.walk(folder.path):
+                # exclude all hidden folders in the working folder
+                dirs[:] = [d for d in dirs if not d.startswith('.')]
+
                 folderpath = os.path.join(folder.path, subdir)
                 if folderpath not in env_paths and is_julia_environment(folderpath):
-                    if os.path.relpath(subdir, folder.path) == '.':
-                        env_name = os.path.join(os.path.basename(folder.path))
-                    else:
-                        env_name = os.path.join(os.path.basename(
-                            folder.path), os.path.relpath(subdir, folder.path))
+                    basename = os.path.basename(folder.path)
+                    relpath = os.path.relpath(subdir, folder.path)
+                    env_name = basename if relpath == '.' else os.path.join(basename, relpath)
+
                     items.append(sublime.ListInputItem(
                         env_name, folderpath, kind=KIND_WORKSPACE_FOLDER))
 
