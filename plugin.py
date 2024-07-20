@@ -803,7 +803,6 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
             for subdir, dirs, files in os.walk(folder.path):
                 # exclude all hidden folders in the working folder
                 dirs[:] = [d for d in dirs if not d.startswith('.')]
-
                 folderpath = os.path.join(folder.path, subdir)
                 if folderpath not in env_paths and is_julia_environment(folderpath):
                     basename = os.path.basename(folder.path)
