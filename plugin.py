@@ -809,9 +809,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
                     basename = os.path.basename(folder.path)
                     relpath = os.path.relpath(subdir, folder.path)
                     env_name = basename if relpath == '.' else os.path.join(basename, relpath)
-
-                    items.append(sublime.ListInputItem(
-                        env_name, folderpath, kind=KIND_WORKSPACE_FOLDER))
+                    items.append(sublime.ListInputItem(env_name, folderpath, kind=KIND_WORKSPACE_FOLDER))
 
         # Add default Julia environments from .julia/environments
         items.extend([
