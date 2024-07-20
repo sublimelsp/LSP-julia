@@ -745,8 +745,8 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
         if env_path == SELECT_FOLDER_DIALOG_FLAG:
             curr_file = self.window.active_view().file_name()
             starting_dir = os.path.dirname(curr_file) if curr_file else None
-            sublime.select_folder_dialog(self.on_select_folder, starting_dir,
-                                         multi_select=False)  # pyright: ignore
+            sublime.select_folder_dialog(
+                self.on_select_folder, starting_dir, multi_select=False)  # pyright: ignore[reportArgumentType]
         elif env_path:
             self.activate_environment(env_path)
 
