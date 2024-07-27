@@ -8,6 +8,7 @@ from LSP.plugin import Notification
 from LSP.plugin import parse_uri
 from LSP.plugin import Request
 from LSP.plugin import Response
+from LSP.plugin import Session
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.core.protocol import DocumentUri, Location, Point, Position, Range, TextDocumentIdentifier
@@ -35,6 +36,7 @@ import sublime
 import sublime_plugin
 import subprocess
 import threading
+import toml
 import traceback
 
 
@@ -251,6 +253,44 @@ def find_julia_environment(folder_path: str) -> str | None:
         else:
             folder_path = os.path.dirname(folder_path)
     return None
+
+
+def find_project_file(folder_path: str) -> str | None:
+    """ Search through parent directories for a Project.toml or JuliaProject.toml file. """
+    while os.path.basename(folder_path):
+        project_file = os.path.join(folder_path, 'JuliaProject.toml')
+        if os.path.isfile(project_file):
+            return project_file
+        project_file = os.path.join(folder_path, 'Project.toml')
+        if os.path.isfile(project_file):
+            return project_file
+        folder_path = os.path.dirname(folder_path)
+    return None
+
+
+def set_environment_status(session: Session, env_path) -> None:
+    project_file = find_project_file(env_path)
+    if not project_file:
+        session.set_config_status_async(os.path.basename(env_path))
+        return
+    env_path = os.path.dirname(project_file)
+    try:
+        project_name = toml.load(project_file).get('name')
+        if project_name:
+            session.set_config_status_async(project_name + '.jl')
+            return
+        parent_project_file = find_project_file(os.path.dirname(env_path))
+        if not parent_project_file:
+            session.set_config_status_async(os.path.basename(env_path))
+            return
+        parent_project_name = toml.load(parent_project_file).get('name')
+        if not parent_project_name:
+            session.set_config_status_async(os.path.basename(env_path))
+            return
+        relpath = os.path.relpath(env_path, os.path.dirname(parent_project_file))
+        session.set_config_status_async(parent_project_name + '.jl/' + relpath.replace('\\', '/'))
+    except toml.TomlDecodeError:
+        session.set_config_status_async(os.path.basename(env_path))
 
 
 def prepare_markdown(content: str) -> str:
@@ -571,9 +611,10 @@ class LspJuliaPlugin(AbstractPlugin):
         if not session:
             return
         self.testitems = TestItemStorage(session.window)
-        env_name = os.path.basename(session.working_directory) if session.working_directory else \
-            LspJuliaPlugin.default_julia_environment()
-        session.set_config_status_async(env_name)
+        if session.working_directory and find_project_file(session.working_directory):
+            set_environment_status(session, session.working_directory)
+        else:
+            session.set_config_status_async(LspJuliaPlugin.default_julia_environment())
 
     @classmethod
     def name(cls) -> str:
@@ -769,9 +810,9 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
         session = self.session()
         if not session:
             return
-        session.send_notification(Notification("julia/activateenvironment", {"envPath": env_path}))
-        env_name = os.path.basename(env_path)
-        session.set_config_status_async(env_name)
+        session.send_notification(Notification('julia/activateenvironment', {'envPath': env_path}))
+        set_environment_status(session, env_path)
+
 
     def input(self, args: dict) -> sublime_plugin.ListInputHandler | None:
         if 'files' in args:  # command was invoked from the side bar context menu

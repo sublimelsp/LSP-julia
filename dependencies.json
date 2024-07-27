@@ -3,6 +3,7 @@
         "*": [
             "mdpopups",
             "sublime_lib",
+            "toml",
             "typing_extensions"
         ]
     }
