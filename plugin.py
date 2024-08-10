@@ -420,7 +420,8 @@ class TestItemStorage:
                 TestItemStatus.Invalid: []
             }
             version = self.testitemparams[filepath]['version']
-            error_annotation_color = view.style_for_scope(TESTITEM_SCOPES[TestItemStatus.Errored])['foreground']
+            error_annotation_color = cast(
+                str, view.style_for_scope(TESTITEM_SCOPES[TestItemStatus.Errored])['foreground'])
             for idx, item, result in \
                     zip(itertools.count(), self.testitemdetails[filepath], self.testitemstatus[filepath]):
                 region = sublime.Region(point_to_offset(Point.from_lsp(item['range']['start']), view))
@@ -473,7 +474,7 @@ class TestItemStorage:
                         icon=TESTITEM_ICONS[status],
                         flags=sublime.HIDE_ON_MINIMAP | sublime.DRAW_NO_FILL | sublime.DRAW_NO_OUTLINE,
                         annotations=annotations[status],
-                        annotation_color=view.style_for_scope(TESTITEM_SCOPES[status])['foreground'],
+                        annotation_color=cast(str, view.style_for_scope(TESTITEM_SCOPES[status])['foreground']),
                         on_navigate=on_navigate)
                 else:
                     view.erase_regions(regions_key)
