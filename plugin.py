@@ -656,7 +656,7 @@ class LspJuliaPlugin(AbstractPlugin):
 
     @classmethod
     def server_version(cls) -> str:
-        return "1cc14a9"  # LanguageServer v4.5.1
+        return "1cc14a9-fix-1.11"  # LanguageServer v4.5.1
 
     @classmethod
     def needs_update_or_installation(cls) -> bool:
@@ -675,7 +675,7 @@ class LspJuliaPlugin(AbstractPlugin):
         shutil.rmtree(cls.basedir(), ignore_errors=True)
         try:
             os.makedirs(cls.serverdir(), exist_ok=True)
-            for file in ("Project.toml", "Manifest.toml"):
+            for file in ("Project.toml", "Manifest.toml", "Manifest-v1.11.toml"):
                 ResourcePath.from_file_path(
                     os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.serverdir(), file))
             # TODO Use cls.basedir() as DEPOT_PATH for language server
