@@ -12,7 +12,13 @@
     "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer; runserver()"],
     "selector": "source.julia",
     "initializationOptions": {
-        "julialangTestItemIdentification": true
+        // The plugin implementation for testitems is not yet compatible with the
+        // notifications from the latest language server version, so testitems
+        // cannot be enabled at the moment.
+        "julialangTestItemIdentification": false,
+        // If set to true, parent directories and the home directory are also searched
+        // for a `.JuliaFormatter.toml` file.
+        "useFormatterConfigDefaults": false,
     },
 
     // Formatting options must be configured through a .JuliaFormatter.toml file,
