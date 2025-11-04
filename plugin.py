@@ -20,10 +20,10 @@ from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import text_document_position_params
 from LSP.plugin.core.views import uri_from_view
 from collections import deque
+from importlib.util import find_spec
 from sublime_lib import ResourcePath
 from typing import Any, Dict, List, TypedDict
 from typing_extensions import NotRequired
-import importlib
 import mdpopups
 import os
 import re
@@ -507,15 +507,12 @@ class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
     """
 
     def is_enabled(self) -> bool:
-        return importlib.find_loader("Terminus") is not None
+        return find_spec("Terminus") is not None
 
     def run(self, panel: bool = True) -> None:
-        repl_view = find_output_view(self.window, JULIA_REPL_NAME)
-        repl_panel = self.window.find_output_panel(JULIA_REPL_NAME)
-
-        if repl_view:
+        if repl_view := find_output_view(self.window, JULIA_REPL_NAME):
             self.window.focus_view(repl_view)
-        elif repl_panel:
+        elif repl_panel := self.window.find_output_panel(JULIA_REPL_NAME):
             self.window.run_command("show_panel", {"panel": "output.{}".format(JULIA_REPL_NAME)})
             self.window.focus_view(repl_panel)
         else:
@@ -555,7 +552,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         if not super().is_enabled(event, point):
             return False
         # Terminus package must be installed
-        if not importlib.find_loader("Terminus"):
+        if not find_spec("Terminus"):
             return False
         # cursor must not be at end of file
         if self.view.sel()[0].b == self.view.size():
@@ -606,7 +603,7 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
         if not self.view.match_selector(0, "source.julia"):
             return False
         # Terminus package must be installed
-        if not importlib.find_loader("Terminus"):
+        if not find_spec("Terminus"):
             return False
         # cursor must not be at end of file
         if self.view.sel()[0].b == self.view.size():
