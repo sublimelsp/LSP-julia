@@ -11,14 +11,14 @@ from LSP.plugin import Response
 from LSP.plugin import Session
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin import register_plugin, unregister_plugin
-from LSP.plugin.core.protocol import DocumentUri
 from LSP.plugin.core.protocol import Point
-from LSP.plugin.core.protocol import Position
-from LSP.plugin.core.protocol import Range
-from LSP.plugin.core.protocol import TextDocumentIdentifier
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import text_document_position_params
 from LSP.plugin.core.views import uri_from_view
+from LSP.protocol import DocumentUri
+from LSP.protocol import Position
+from LSP.protocol import Range
+from LSP.protocol import TextDocumentIdentifier
 from collections import deque
 from importlib.util import find_spec
 from sublime_lib import ResourcePath
