@@ -319,8 +319,7 @@ class LspJuliaPlugin(AbstractPlugin):
             # TODO Use cls.basedir() as DEPOT_PATH for language server
             # os.makedirs(cls.testrunnerdir(), exist_ok=True)
             # for file in ("Project.toml", "runtestitem.jl"):
-            #     ResourcePath.from_file_path(
-            #         os.path.join(cls.packagedir(), "testrunner", file)).copy(os.path.join(cls.testrunnerdir(), file))
+            #     ResourcePath("Packages", "testrunner", file).copy(os.path.join(cls.testrunnerdir(), file))
             returncode = subprocess.call([
                 cls.julia_exe(),
                 "--startup-file=no",
