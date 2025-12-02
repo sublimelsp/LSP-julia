@@ -6,15 +6,15 @@ from LSP.plugin import LspTextCommand
 from LSP.plugin import LspWindowCommand
 from LSP.plugin import Notification
 from LSP.plugin import parse_uri
+from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin import Request
 from LSP.plugin import Response
 from LSP.plugin import Session
+from LSP.plugin import uri_from_view
 from LSP.plugin import WorkspaceFolder
-from LSP.plugin import register_plugin, unregister_plugin
 from LSP.plugin.core.protocol import Point
 from LSP.plugin.core.views import point_to_offset
 from LSP.plugin.core.views import text_document_position_params
-from LSP.plugin.core.views import uri_from_view
 from LSP.protocol import DocumentUri
 from LSP.protocol import Position
 from LSP.protocol import Range
@@ -22,7 +22,7 @@ from LSP.protocol import TextDocumentIdentifier
 from collections import deque
 from importlib.util import find_spec
 from sublime_lib import ResourcePath
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 from typing_extensions import NotRequired
 import mdpopups
 import os
@@ -48,8 +48,8 @@ class TestItemDetail(TypedDict):
     code: str
     codeRange: Range
     optionDefaultImports: bool
-    optionTags: List[str]
-    optionSetup: List[str]
+    optionTags: list[str]
+    optionSetup: list[str]
 
 class TestSetupDetail(TypedDict):
     name: str
@@ -67,9 +67,9 @@ class TestErrorDetail(TypedDict):
 class PublishTestsParams(TypedDict):
     uri: DocumentUri
     version: NotRequired[int]
-    testItemDetails: List[TestItemDetail]
-    testSetupDetails: List[TestSetupDetail]
-    testErrorDetails: List[TestErrorDetail]
+    testItemDetails: list[TestItemDetail]
+    testSetupDetails: list[TestSetupDetail]
+    testErrorDetails: list[TestErrorDetail]
 
 
 # sublime.Kind tuples for the "Change Current Environment" QuickPanelItems
@@ -84,6 +84,7 @@ CLASS_INSIDE_WORD = 512
 ST_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
 INSTALLED_PACKAGES_PATH = sublime.installed_packages_path()
 PACKAGES_PATH = sublime.packages_path()
+PACKAGE_NAME = "LSP-julia"
 SETTINGS_FILE = "LSP-julia.sublime-settings"
 SESSION_NAME = "julia"
 STATUS_BAR_KEY = "lsp_julia_environment"
@@ -259,12 +260,12 @@ class LspJuliaPlugin(AbstractPlugin):
         return SESSION_NAME
 
     @classmethod
-    def additional_variables(cls) -> Dict[str, str] | None:
+    def additional_variables(cls) -> dict[str, str] | None:
         return {'julia_exe': cls.julia_exe(), 'server_path': cls.basedir()}
 
     @classmethod
     def basedir(cls) -> str:
-        return os.path.join(cls.storage_path(), "LSP-julia")
+        return os.path.join(cls.storage_path(), PACKAGE_NAME)
 
     @classmethod
     def testrunnerdir(cls) -> str:
@@ -276,7 +277,7 @@ class LspJuliaPlugin(AbstractPlugin):
 
     @classmethod
     def packagedir(cls) -> str:
-        return os.path.join(sublime.packages_path(), "LSP-julia")
+        return os.path.join(sublime.packages_path(), PACKAGE_NAME)
 
     @classmethod
     def julia_exe(cls) -> str:
@@ -314,13 +315,11 @@ class LspJuliaPlugin(AbstractPlugin):
         try:
             os.makedirs(cls.basedir(), exist_ok=True)
             for file in ("Project.toml", "Manifest.toml", "Manifest-v1.11.toml", "Manifest-v1.12.toml"):
-                ResourcePath.from_file_path(
-                    os.path.join(cls.packagedir(), "server", file)).copy(os.path.join(cls.basedir(), file))
+                ResourcePath("Packages", PACKAGE_NAME, "server", file).copy(os.path.join(cls.basedir(), file))
             # TODO Use cls.basedir() as DEPOT_PATH for language server
             # os.makedirs(cls.testrunnerdir(), exist_ok=True)
             # for file in ("Project.toml", "runtestitem.jl"):
-            #     ResourcePath.from_file_path(
-            #         os.path.join(cls.packagedir(), "testrunner", file)).copy(os.path.join(cls.testrunnerdir(), file))
+            #     ResourcePath("Packages", "testrunner", file).copy(os.path.join(cls.testrunnerdir(), file))
             returncode = subprocess.call([
                 cls.julia_exe(),
                 "--startup-file=no",
@@ -340,7 +339,7 @@ class LspJuliaPlugin(AbstractPlugin):
         cls,
         window: sublime.Window,
         initiating_view: sublime.View,
-        workspace_folders: List[WorkspaceFolder],
+        workspace_folders: list[WorkspaceFolder],
         configuration: ClientConfig
     ) -> str | None:
         # The working directory is used by the language server to find the Julia project environment, if not explicitly
@@ -455,11 +454,11 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
 
 class EnvPathInputHandler(sublime_plugin.ListInputHandler):
 
-    def __init__(self, workspace_folders: List[WorkspaceFolder]) -> None:
+    def __init__(self, workspace_folders: list[WorkspaceFolder]) -> None:
         self.workspace_folders = workspace_folders
 
-    def list_items(self) -> List[sublime.ListInputItem]:
-        items: List[sublime.ListInputItem] = []
+    def list_items(self) -> list[sublime.ListInputItem]:
+        items: list[sublime.ListInputItem] = []
         # Add option for folder picker dialog
         items.append(sublime.ListInputItem("(pick a folder…)", SELECT_FOLDER_DIALOG_FLAG))
         # Collect all folder names and corresponding paths in .julia/environments
@@ -746,7 +745,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         })
 
         # Add navigation toolbar with "Back", "Forward" and "Search" links
-        toolbar_links: List[str] = []
+        toolbar_links: list[str] = []
 
         toolbar_links.append(
             "<a title='Go back one page' href='{}'>Back</a>".format(
