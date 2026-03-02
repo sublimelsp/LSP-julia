@@ -5,11 +5,8 @@
         "file_patterns": ["/LSP-julia.sublime-settings"],
         "schema": {
           "$id": "sublime://settings/LSP-julia",
-          "allOf": [
-            {
-              "$ref": "sublime://settings/LSP-plugin-base"
-            },
-            {
+          "definitions": {
+            "PluginConfig": {
               "properties": {
                 "julia_executable_path": {
                   "description": "Full path to the Julia executable (including the file itself).",
@@ -133,9 +130,37 @@
                 }
               }
             }
+          },
+          "allOf": [
+            {
+              "$ref": "sublime://settings/LSP-plugin-base"
+            },
+            {
+              "$ref": "#/definitions/PluginConfig"
+            }
           ]
         }
-      }
+      },
+      {
+        "file_patterns": [
+          "/*.sublime-project"
+        ],
+        "schema": {
+          "properties": {
+            "settings": {
+              "properties": {
+                "LSP": {
+                  "properties": {
+                    "julia": {
+                      "$ref": "sublime://settings/LSP-julia#/definitions/PluginConfig"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
     ]
   }
 }
