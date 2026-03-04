@@ -8,15 +8,6 @@
           "definitions": {
             "PluginConfig": {
               "properties": {
-                "julia_executable_path": {
-                  "description": "Full path to the Julia executable (including the file itself).",
-                  "type": "string",
-                  "default": ""
-                },
-                "repl_env_variables": {
-                  "description": "Additional environmental variables for the Julia REPL.",
-                  "type": "object"
-                },
                 "initializationOptions": {
                   "properties": {
                     "useFormatterConfigDefaults": {
@@ -137,6 +128,19 @@
             },
             {
               "$ref": "#/definitions/PluginConfig"
+            },
+            {
+              "properties": {
+                "julia_executable_path": {
+                  "description": "Full path to the Julia executable (including the file itself).",
+                  "type": "string",
+                  "default": ""
+                },
+                "repl_env_variables": {
+                  "description": "Additional environmental variables for the Julia REPL.",
+                  "type": "object"
+                }
+              }
             }
           ]
         }
