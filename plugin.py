@@ -295,7 +295,7 @@ class LspJuliaPlugin(AbstractPlugin):
 
     @classmethod
     def server_version(cls) -> str:
-        return "881ada8"  # LanguageServer v5.0.0-DEV
+        return "7f6092e"  # LanguageServer v5.0.0
 
     @classmethod
     def needs_update_or_installation(cls) -> bool:

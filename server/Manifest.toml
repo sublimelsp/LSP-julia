@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.10"
+julia_version = "1.10.11"
 manifest_format = "2.0"
 project_hash = "4a204d8b99ae9ba3f64e5610cc16dcb84e5e1765"
 
@@ -26,9 +26,10 @@ uuid = "00ebfdb7-1f24-5e51-bd34-a7502290713f"
 version = "3.4.3"
 
 [[deps.CancellationTokens]]
-git-tree-sha1 = "eacd96906188a977d9cd4b00c48552cdd46e5f47"
+deps = ["Sockets"]
+git-tree-sha1 = "fe0f4e7c1ea54da28553878c7e8ceb816d130b20"
 uuid = "2e8d271d-f2e2-407b-a864-17eb2156783e"
-version = "1.0.0"
+version = "1.2.0"
 
 [[deps.CommonMark]]
 deps = ["Crayons", "PrecompileTools"]
@@ -79,9 +80,9 @@ version = "0.1.11"
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
 [[deps.Glob]]
-git-tree-sha1 = "97285bbd5230dd766e9ef6749b80fc617126d496"
+git-tree-sha1 = "83cb0092e2792b9e3a865b6655e88f5b862607e2"
 uuid = "c27321d9-0574-5035-807b-f59d2c89b15c"
-version = "1.3.1"
+version = "1.4.0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
@@ -94,10 +95,10 @@ uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.4"
 
 [[deps.JSONRPC]]
-deps = ["CancellationTokens", "JSON", "UUIDs"]
-git-tree-sha1 = "bf7422b4a8e1fe7d9af9379acf984a409f7a9bcf"
+deps = ["CancellationTokens", "JSON", "Sockets", "UUIDs"]
+git-tree-sha1 = "e90c5c29054b8f013aaee04327bc7e7dd9fd334a"
 uuid = "b9b8584e-8fd3-41f9-ad0c-7255d428e418"
-version = "2.0.1"
+version = "2.1.0"
 
 [[deps.JuliaFormatter]]
 deps = ["CSTParser", "CommonMark", "DataStructures", "Glob", "PrecompileTools", "TOML", "Tokenize"]
@@ -118,11 +119,11 @@ version = "7.0.0"
 
 [[deps.LanguageServer]]
 deps = ["CSTParser", "Dates", "JSON", "JSONRPC", "JuliaFormatter", "JuliaWorkspaces", "Logging", "Markdown", "Pkg", "PrecompileTools", "REPL", "StaticLint", "SymbolServer", "Tokenize", "URIs", "UUIDs"]
-git-tree-sha1 = "e94acf024681c3c3dd989912336c792a7901cc31"
-repo-rev = "881ada8bf419b1f001b324650fa97a62c4bb0ed3"
+git-tree-sha1 = "9403135535f01b73255fc1cb867c3bcff96a7b15"
+repo-rev = "7f6092e6f4cfc163a1e64e948e494e813283cfb5"
 repo-url = "https://github.com/julia-vscode/LanguageServer.jl.git"
 uuid = "2b0e0bc5-e4fd-59b4-8912-456d1b03d8d7"
-version = "5.0.0-DEV"
+version = "5.0.0"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -166,14 +167,14 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+1"
+version = "2.28.1010+0"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2023.1.10"
+version = "2025.12.2"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
@@ -203,9 +204,9 @@ version = "1.2.1"
 
 [[deps.Preferences]]
 deps = ["TOML"]
-git-tree-sha1 = "0f27480397253da18fe2c12a4ba4eb9eb208bf3d"
+git-tree-sha1 = "8b770b60760d4451834fe79dd483e318eee709c4"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.5.0"
+version = "1.5.2"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -237,19 +238,19 @@ uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
 [[deps.StaticLint]]
 deps = ["CSTParser", "Serialization", "SymbolServer"]
-git-tree-sha1 = "a08c54a69b0fda8f4833b24a2425fafdc31bd1d1"
-repo-rev = "f7008ed7358ed61382866792a792b51977325c94"
+git-tree-sha1 = "7c2c4e8f8ea196a59a76530c8abf85a8a04405d6"
+repo-rev = "a17b0951fc809c19d42d7e33e339f6e16ddd41a6"
 repo-url = "https://github.com/julia-vscode/StaticLint.jl.git"
 uuid = "b3cc710f-9c33-5bdb-a03d-a94903873e97"
-version = "8.2.3-DEV"
+version = "9.0.0"
 
 [[deps.SymbolServer]]
 deps = ["InteractiveUtils", "LibGit2", "Markdown", "Pkg", "REPL", "SHA", "Serialization", "Sockets", "UUIDs"]
-git-tree-sha1 = "566110f61f051f2c0877442497f8f52336751adc"
-repo-rev = "9f41f774b5ef041367de754d73d1644e12a10b9f"
+git-tree-sha1 = "066b39188525a9a3fa3abd201283b6004f81c443"
+repo-rev = "40f5e68f177ff310c4f7c94947a13ad6e9780a27"
 repo-url = "https://github.com/julia-vscode/SymbolServer.jl.git"
 uuid = "cf896787-08d5-524d-9de7-132aaa0cb996"
-version = "8.0.1-DEV"
+version = "8.0.1"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -301,4 +302,4 @@ version = "1.52.0+1"
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "17.4.0+2"
+version = "17.6.1+0"
