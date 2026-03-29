@@ -8,7 +8,7 @@
           "definitions": {
             "PluginConfig": {
               "properties": {
-                "initializationOptions": {
+                "initialization_options": {
                   "properties": {
                     "useFormatterConfigDefaults": {
                       "markdownDescription": "Whether parent directories and the home directory are also searched for a `.JuliaFormatter.toml` file.",

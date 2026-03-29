@@ -11,7 +11,7 @@
     // Language server configurations
     "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer; runserver()"],
     "selector": "source.julia",
-    "initializationOptions": {
+    "initialization_options": {
         // If set to true, parent directories and the home directory are also searched
         // for a `.JuliaFormatter.toml` file.
         "useFormatterConfigDefaults": false,

@@ -1,15 +1,20 @@
 from __future__ import annotations
+
+from collections import deque
+from importlib.util import find_spec
 from LSP.plugin import AbstractPlugin
 from LSP.plugin import ClientConfig
 from LSP.plugin import css
 from LSP.plugin import LspTextCommand
 from LSP.plugin import LspWindowCommand
 from LSP.plugin import Notification
+from LSP.plugin import notification_handler
 from LSP.plugin import parse_uri
-from LSP.plugin import register_plugin, unregister_plugin
+from LSP.plugin import register_plugin
 from LSP.plugin import Request
 from LSP.plugin import Response
 from LSP.plugin import Session
+from LSP.plugin import unregister_plugin
 from LSP.plugin import uri_from_view
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin.core.protocol import Point
@@ -19,10 +24,10 @@ from LSP.protocol import DocumentUri
 from LSP.protocol import Position
 from LSP.protocol import Range
 from LSP.protocol import TextDocumentIdentifier
-from collections import deque
-from importlib.util import find_spec
 from sublime_lib import ResourcePath
-from typing import Any, TypedDict
+from sublime_types import CommandArgs
+from typing import Any
+from typing import TypedDict
 from typing_extensions import NotRequired
 import mdpopups
 import os
@@ -32,6 +37,7 @@ import sublime
 import sublime_plugin
 import subprocess
 import toml
+import weakref
 
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
@@ -186,7 +192,7 @@ def find_project_file(folder_path: str) -> str | None:
     return None
 
 
-def set_environment_status(session: Session, env_path) -> None:
+def set_environment_status(session: Session, env_path: str) -> None:
     project_file = find_project_file(env_path)
     if not project_file:
         session.set_config_status_async(os.path.basename(env_path))
@@ -244,7 +250,7 @@ def startupinfo():
 
 class LspJuliaPlugin(AbstractPlugin):
 
-    def __init__(self, weaksession) -> None:
+    def __init__(self, weaksession: weakref.ref[Session]) -> None:
         super().__init__(weaksession)
         session = weaksession()
         if not session:
@@ -291,7 +297,7 @@ class LspJuliaPlugin(AbstractPlugin):
     @classmethod
     def default_julia_environment(cls) -> str:
         major, minor, _ = cls.julia_version().split(".")
-        return "v{}.{}".format(major, minor)
+        return f"v{major}.{minor}"
 
     @classmethod
     def server_version(cls) -> str:
@@ -300,8 +306,8 @@ class LspJuliaPlugin(AbstractPlugin):
     @classmethod
     def needs_update_or_installation(cls) -> bool:
         if not shutil.which(cls.julia_exe()):
-            msg = ('The executable "{}" could not be found. Set up the path to the Julia executable by running the '
-                'command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.').format(cls.julia_exe())
+            msg = (f'The executable "{cls.julia_exe()}" could not be found. Set up the path to the Julia executable '
+                'by running the command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.')
             raise RuntimeError(msg)
         try:
             with open(cls.version_file(), "r") as fp:
@@ -324,7 +330,7 @@ class LspJuliaPlugin(AbstractPlugin):
                 cls.julia_exe(),
                 "--startup-file=no",
                 "--history-file=no",
-                "--project={}".format(cls.basedir()),
+                f"--project={cls.basedir()}",
                 "--eval", "ENV[\"JULIA_SSL_CA_ROOTS_PATH\"] = \"\"; import Pkg; Pkg.instantiate()"
             ])
             if returncode == 0:
@@ -359,14 +365,14 @@ class LspJuliaPlugin(AbstractPlugin):
             return find_julia_environment(os.path.dirname(file_path))
         return None
 
-    def on_server_response_async(self, method: str, response: Response) -> None:
+    def on_server_response_async(self, method: str, response: Response[Any]) -> None:
         if method == "textDocument/hover" and isinstance(response.result, dict):
             contents = response.result.get("contents")
             if isinstance(contents, dict) and contents.get("kind") == "markdown":
                 response.result["contents"]["value"] = prepare_markdown(contents["value"])
 
-    # Handles the julia/publishTests notification
-    def m_julia_publishTests(self, params: PublishTestsParams) -> None:
+    @notification_handler("julia/publishTests")
+    def on_publish_tests(self, params: PublishTestsParams) -> None:
         pass
         # if params:
         #     uri = params['uri']
@@ -493,7 +499,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         if text == SELECT_FOLDER_DIALOG_FLAG:
             return "Open a folder picker dialog to select a Julia project"
         elif text:
-            return sublime.Html("<i>{}</i>".format(text))
+            return sublime.Html(f"<i>{text}</i>")
         return ""
 
     def validate(self, text: str | int | None) -> bool:
@@ -512,7 +518,7 @@ class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
         if repl_view := find_output_view(self.window, JULIA_REPL_NAME):
             self.window.focus_view(repl_view)
         elif repl_panel := self.window.find_output_panel(JULIA_REPL_NAME):
-            self.window.run_command("show_panel", {"panel": "output.{}".format(JULIA_REPL_NAME)})
+            self.window.run_command("show_panel", {"panel": f"output.{JULIA_REPL_NAME}"})
             self.window.focus_view(repl_panel)
         else:
             start_julia_repl(self.window, True, panel)
@@ -668,7 +674,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
     _next_words = deque()
     _current_word: str | None = None
 
-    def run(self, word: str) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def run(self, word: str) -> None:
         if word == "__back":
             try:
                 word = self._last_words.pop()
@@ -784,12 +790,14 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
         if "word" not in args:
             return WordInputHandler()
 
-    def _link_replacement(self, match: re.Match, encoded_position: bool = True) -> str:
+    def _link_replacement(self, match: re.Match[str], encoded_position: bool = True) -> str:
         path = parse_uri(match.group(2))[1].replace('\\', '\\\\')
+        args: CommandArgs = {}
         if encoded_position:
-            return """<a href='subl:lsp_julia_open_file {{"file": "{}:{}", "encoded_position": true}}'>{}</a>""".format(
-                path, match.group(3), match.group(1))
-        return """<a href='subl:lsp_julia_open_file {{"file": "{}"}}'>{}</a>""".format(path, match.group(1))
+            args = {"file": f"{path}:{match.group(3)}", "encoded_position": True}
+        else:
+            args = {"file": path}
+        return f"""<a href="{sublime.command_url('lsp_julia_open_file', args)}">{match.group(1)}</a>"""
 
 
 class WordInputHandler(sublime_plugin.TextInputHandler):
