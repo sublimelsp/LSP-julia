@@ -69,6 +69,7 @@ class TestErrorDetail(TypedDict):
     range: Range
     error: str
 
+
 class PublishTestsParams(TypedDict):
     uri: DocumentUri
     version: NotRequired[int]
