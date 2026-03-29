@@ -447,7 +447,6 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
         session.send_notification(Notification('julia/activateenvironment', {'envPath': env_path}))
         set_environment_status(session, env_path)
 
-
     def input(self, args: dict) -> sublime_plugin.ListInputHandler | None:
         if 'files' in args:  # command was invoked from the side bar context menu
             return None
@@ -796,7 +795,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             args = {"file": f"{path}:{match.group(3)}", "encoded_position": True}
         else:
             args = {"file": path}
-        return f"""<a href="{sublime.command_url('lsp_julia_open_file', args)}">{match.group(1)}</a>"""
+        return f"""<a href='{sublime.command_url('lsp_julia_open_file', args)}'>{match.group(1)}</a>"""
 
 
 class WordInputHandler(sublime_plugin.TextInputHandler):
