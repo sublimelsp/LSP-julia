@@ -25,7 +25,6 @@ from LSP.protocol import Position
 from LSP.protocol import Range
 from LSP.protocol import TextDocumentIdentifier
 from sublime_lib import ResourcePath
-from sublime_types import CommandArgs
 from typing import Any
 from typing import TypedDict
 from typing_extensions import NotRequired
@@ -792,7 +791,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
     def _link_replacement(self, match: re.Match[str], encoded_position: bool = True) -> str:
         path = parse_uri(match.group(2))[1].replace('\\', '\\\\')
-        args: CommandArgs = {}
+        args: dict[str, Any] = {}
         if encoded_position:
             args = {"file": f"{path}:{match.group(3)}", "encoded_position": True}
         else:
