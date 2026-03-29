@@ -674,7 +674,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
     _next_words = deque()
     _current_word: str | None = None
 
-    def run(self, word: str) -> None:
+    def run(self, word: str) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
         if word == "__back":
             try:
                 word = self._last_words.pop()
