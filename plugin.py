@@ -296,7 +296,7 @@ class LspJuliaPlugin(LspPlugin):
         except OSError:
             return True
 
-    def on_initialize_async(self) -> None:
+    def on_initialized_async(self) -> None:
         if (session := self.weaksession()) and session.working_directory:
             set_environment_status(session, session.working_directory)
 
@@ -308,7 +308,7 @@ class LspJuliaPlugin(LspPlugin):
                 if isinstance(contents, dict) and contents.get('kind') == 'markdown':
                     contents['value'] = prepare_markdown(contents['value'])
 
-    @notification_handler("julia/publishTests")
+    @notification_handler('julia/publishTests')
     def on_publish_tests(self, params: PublishTestsParams) -> None:
         pass
 
