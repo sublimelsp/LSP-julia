@@ -296,8 +296,7 @@ class LspJuliaPlugin(LspPlugin):
 
     def on_server_response_async(self, response: ServerResponse) -> None:
         if response['method'] == 'textDocument/hover':
-            result = response['result']
-            if isinstance(result, dict):
+            if result := response['result']:
                 contents = result.get('contents')
                 if isinstance(contents, dict) and contents.get('kind') == 'markdown':
                     contents['value'] = prepare_markdown(contents['value'])
