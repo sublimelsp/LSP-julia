@@ -266,7 +266,8 @@ class LspJuliaPlugin(LspPlugin):
         else:
             if (fpath := context.view.file_name()) and (env_path := find_julia_environment(os.path.dirname(fpath))):
                 context.working_directory = env_path
-        if cls.needs_installation():
+        version_file = cls.plugin_storage_path / 'VERSION'
+        if not version_file.is_file() or version_file.read_text().strip() != SERVER_VERSION:
             shutil.rmtree(server_path, ignore_errors=True)
             try:
                 os.makedirs(server_path, exist_ok=True)
@@ -282,19 +283,12 @@ class LspJuliaPlugin(LspPlugin):
                     'ENV["JULIA_SSL_CA_ROOTS_PATH"] = ""; import Pkg; Pkg.instantiate()'
                 ])
                 if returncode == 0:
-                    (cls.plugin_storage_path / 'VERSION').write_text(SERVER_VERSION)
+                    version_file.write_text(SERVER_VERSION)
                 else:
                     raise PluginStartError('Language server installation failed.')
             except Exception:
                 shutil.rmtree(server_path, ignore_errors=True)
                 raise PluginStartError('Language server installation failed.')
-
-    @classmethod
-    def needs_installation(cls) -> bool:
-        try:
-            return (cls.plugin_storage_path / 'VERSION').read_text().strip() != SERVER_VERSION
-        except OSError:
-            return True
 
     def on_initialized_async(self) -> None:
         if (session := self.weaksession()) and session.working_directory:
