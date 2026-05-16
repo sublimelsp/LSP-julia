@@ -2,19 +2,18 @@ from __future__ import annotations
 
 from collections import deque
 from importlib.util import find_spec
-from LSP.plugin import AbstractPlugin
-from LSP.plugin import ClientConfig
 from LSP.plugin import css
+from LSP.plugin import LspPlugin
 from LSP.plugin import LspTextCommand
 from LSP.plugin import LspWindowCommand
 from LSP.plugin import Notification
 from LSP.plugin import notification_handler
+from LSP.plugin import OnPreStartContext
 from LSP.plugin import parse_uri
-from LSP.plugin import register_plugin
+from LSP.plugin import PluginStartError
 from LSP.plugin import Request
-from LSP.plugin import Response
+from LSP.plugin import ServerResponse
 from LSP.plugin import Session
-from LSP.plugin import unregister_plugin
 from LSP.plugin import uri_from_view
 from LSP.plugin import WorkspaceFolder
 from LSP.plugin.core.protocol import Point
@@ -36,7 +35,6 @@ import sublime
 import sublime_plugin
 import subprocess
 import toml
-import weakref
 
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
@@ -87,6 +85,7 @@ CLASS_INSIDE_WORD = 512
 # CLASS_BRACKET_OPEN = 4096
 # CLASS_BRACKET_CLOSE = 8192
 
+SERVER_VERSION = "7f6092e"  # LanguageServer v5.0.0
 ST_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
 INSTALLED_PACKAGES_PATH = sublime.installed_packages_path()
 PACKAGES_PATH = sublime.packages_path()
@@ -239,152 +238,87 @@ def prepare_markdown(content: str) -> str:
     return content
 
 
-def startupinfo():
-    if sublime.platform() == "windows":
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = 11
-        return si
-    return None
+# def startupinfo():
+#     if sublime.platform() == "windows":
+#         si = subprocess.STARTUPINFO()
+#         si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+#         si.wShowWindow = 11
+#         return si
+#     return None
 
 
-class LspJuliaPlugin(AbstractPlugin):
+class LspJuliaPlugin(LspPlugin):
 
-    def __init__(self, weaksession: weakref.ref[Session]) -> None:
-        super().__init__(weaksession)
-        session = weaksession()
-        if not session:
-            return
-        # self.testitems = TestItemStorage(session.window)
-        if session.working_directory and find_project_file(session.working_directory):
-            set_environment_status(session, session.working_directory)
+    @classmethod
+    def on_pre_start_async(cls, context: OnPreStartContext) -> None:
+        julia_exe = str(sublime.load_settings(SETTINGS_FILE).get('julia_executable_path')) or 'julia'
+        if not shutil.which(julia_exe):
+            raise PluginStartError(f'The executable "{julia_exe}" could not be found.')
+        context.variables['julia_exe'] = julia_exe
+        server_path = str(cls.plugin_storage_path)
+        context.variables['server_path'] = server_path
+        # Set working directory, which is used by the language server to determine the Julia project environment
+        view_uri = uri_from_view(context.view)
+        for workspace_folder in context.workspace_folders:
+            if workspace_folder.includes_uri(view_uri):
+                context.working_directory = workspace_folder.path
+                break
         else:
-            session.set_config_status_async(LspJuliaPlugin.default_julia_environment())
+            if (fpath := context.view.file_name()) and (env_path := find_julia_environment(os.path.dirname(fpath))):
+                context.working_directory = env_path
+        if cls.needs_installation():
+            shutil.rmtree(server_path, ignore_errors=True)
+            try:
+                os.makedirs(server_path, exist_ok=True)
+                for file in ('Project.toml', 'Manifest.toml', 'Manifest-v1.11.toml', 'Manifest-v1.12.toml'):
+                    ResourcePath('Packages', 'LSP-julia', 'server', file).copy(str(cls.plugin_storage_path / file))
+                # TODO: Use cls.plugin_storage_path as DEPOT_PATH for language server
+                returncode = subprocess.call([
+                    julia_exe,
+                    '--startup-file=no',
+                    '--history-file=no',
+                    f'--project={server_path}',
+                    '--eval',
+                    'ENV["JULIA_SSL_CA_ROOTS_PATH"] = ""; import Pkg; Pkg.instantiate()'
+                ])
+                if returncode == 0:
+                    (cls.plugin_storage_path / 'VERSION').write_text(SERVER_VERSION)
+                else:
+                    raise PluginStartError('Language server installation failed.')
+            except Exception:
+                shutil.rmtree(server_path, ignore_errors=True)
+                raise PluginStartError('Language server installation failed.')
 
     @classmethod
-    def name(cls) -> str:
-        return SESSION_NAME
-
-    @classmethod
-    def additional_variables(cls) -> dict[str, str] | None:
-        return {'julia_exe': cls.julia_exe(), 'server_path': cls.basedir()}
-
-    @classmethod
-    def basedir(cls) -> str:
-        return os.path.join(cls.storage_path(), PACKAGE_NAME)
-
-    @classmethod
-    def testrunnerdir(cls) -> str:
-        return os.path.join(cls.basedir(), "testrunner")
-
-    @classmethod
-    def version_file(cls) -> str:
-        return os.path.join(cls.basedir(), "VERSION")
-
-    @classmethod
-    def packagedir(cls) -> str:
-        return os.path.join(sublime.packages_path(), PACKAGE_NAME)
-
-    @classmethod
-    def julia_exe(cls) -> str:
-        return str(sublime.load_settings(SETTINGS_FILE).get("julia_executable_path")) or "julia"
-
-    @classmethod
-    def julia_version(cls) -> str:
-        return subprocess.check_output(
-            [cls.julia_exe(), "--version"], startupinfo=startupinfo()).decode("utf-8").rstrip().split()[-1]
-
-    @classmethod
-    def default_julia_environment(cls) -> str:
-        major, minor, _ = cls.julia_version().split(".")
-        return f"v{major}.{minor}"
-
-    @classmethod
-    def server_version(cls) -> str:
-        return "7f6092e"  # LanguageServer v5.0.0
-
-    @classmethod
-    def needs_update_or_installation(cls) -> bool:
-        if not shutil.which(cls.julia_exe()):
-            msg = (f'The executable "{cls.julia_exe()}" could not be found. Set up the path to the Julia executable '
-                'by running the command\n\n\tPreferences: LSP-julia Settings\n\nfrom the command palette.')
-            raise RuntimeError(msg)
+    def needs_installation(cls) -> bool:
         try:
-            with open(cls.version_file(), "r") as fp:
-                return cls.server_version() != fp.read().strip()
+            return (cls.plugin_storage_path / 'VERSION').read_text().strip() != SERVER_VERSION
         except OSError:
             return True
 
-    @classmethod
-    def install_or_update(cls) -> None:
-        shutil.rmtree(cls.basedir(), ignore_errors=True)
-        try:
-            os.makedirs(cls.basedir(), exist_ok=True)
-            for file in ("Project.toml", "Manifest.toml", "Manifest-v1.11.toml", "Manifest-v1.12.toml"):
-                ResourcePath("Packages", PACKAGE_NAME, "server", file).copy(os.path.join(cls.basedir(), file))
-            # TODO Use cls.basedir() as DEPOT_PATH for language server
-            # os.makedirs(cls.testrunnerdir(), exist_ok=True)
-            # for file in ("Project.toml", "runtestitem.jl"):
-            #     ResourcePath("Packages", "testrunner", file).copy(os.path.join(cls.testrunnerdir(), file))
-            returncode = subprocess.call([
-                cls.julia_exe(),
-                "--startup-file=no",
-                "--history-file=no",
-                f"--project={cls.basedir()}",
-                "--eval", "ENV[\"JULIA_SSL_CA_ROOTS_PATH\"] = \"\"; import Pkg; Pkg.instantiate()"
-            ])
-            if returncode == 0:
-                with open(cls.version_file(), "w") as fp:
-                    fp.write(cls.server_version())
-        except Exception:
-            shutil.rmtree(cls.basedir(), ignore_errors=True)
-            raise
+    def on_initialized_async(self) -> None:
+        if (session := self.weaksession()) and session.working_directory:
+            set_environment_status(session, session.working_directory)
 
-    @classmethod
-    def on_pre_start(
-        cls,
-        window: sublime.Window,
-        initiating_view: sublime.View,
-        workspace_folders: list[WorkspaceFolder],
-        configuration: ClientConfig
-    ) -> str | None:
-        # The working directory is used by the language server to find the Julia project environment, if not explicitly
-        # given as a parameter of runserver() or as a command line argument. We can make use of this to avoid adjusting
-        # the "command" setting everytime with a new environment argument when the server starts.
-        # If one or more folders are opened in Sublime Text, and one of it contains the initiating view, that folder is
-        # used as the working directory. This avoids to accidentally use a nested environment, e.g. if the initiating
-        # view is a file from a `docs` or `test` subdirectory.
-        # Otherwise we search through parent directories of the initiating view for a Julia environment. If no
-        # environment is found, the language server will fall back to the default Julia environment.
-        view_uri = uri_from_view(initiating_view)
-        for folder in workspace_folders:
-            if folder.includes_uri(view_uri):
-                return folder.path
-        file_path = initiating_view.file_name()
-        if file_path:
-            return find_julia_environment(os.path.dirname(file_path))
-        return None
+    def on_server_response_async(self, response: ServerResponse) -> None:
+        if response['method'] == 'textDocument/hover':
+            result = response['result']
+            if isinstance(result, dict):
+                contents = result.get('contents')
+                if isinstance(contents, dict) and contents.get('kind') == 'markdown':
+                    contents['value'] = prepare_markdown(contents['value'])
 
-    def on_server_response_async(self, method: str, response: Response[Any]) -> None:
-        if method == "textDocument/hover" and isinstance(response.result, dict):
-            contents = response.result.get("contents")
-            if isinstance(contents, dict) and contents.get("kind") == "markdown":
-                response.result["contents"]["value"] = prepare_markdown(contents["value"])
-
-    @notification_handler("julia/publishTests")
+    @notification_handler('julia/publishTests')
     def on_publish_tests(self, params: PublishTestsParams) -> None:
         pass
-        # if params:
-        #     uri = params['uri']
-        #     self.testitems.update(uri, params)
 
 
 def plugin_loaded() -> None:
-    register_plugin(LspJuliaPlugin)
+    LspJuliaPlugin.register()
 
 
 def plugin_unloaded() -> None:
-    unregister_plugin(LspJuliaPlugin)
+    LspJuliaPlugin.unregister()
 
 
 class LspJuliaOpenFileCommand(sublime_plugin.WindowCommand):
@@ -409,8 +343,6 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
     """ Selects the active Julia environment, which is used by the language server to resolve the package dependencies
     in order to provide autocomplete suggestions and diagnostics. The active environment will be shown in the status
     bar, unless the "show_environment_status" setting is disabled. """
-
-    session_name = SESSION_NAME
 
     def run(self, **kwargs) -> None:
         files = kwargs.get('files')
@@ -529,8 +461,6 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
     Maybe not very useful on its own, but rather when combined with running the code in the Julia REPL.
     """
 
-    session_name = SESSION_NAME
-
     def run(self, edit: sublime.Edit) -> None:
         params = versioned_text_document_position_params(self.view, self.view.sel()[0].b)
         session = self.session_by_name(self.session_name)
@@ -548,8 +478,6 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
     Can be invoked to execute the current selection in the Julia REPL. If no text is selected, get the code block
     containing the current cursor position from the language server and execute it in the Julia REPL.
     """
-
-    session_name = SESSION_NAME
 
     def is_enabled(self, event: dict | None = None, point: int | None = None) -> bool:
         # Language server must be ready
@@ -664,8 +592,6 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
     """
     Can be invoked to search the Julia documentation.
     """
-
-    session_name = SESSION_NAME
 
     _sheet_id: int | None = None
 
@@ -813,8 +739,6 @@ class JuliaShowDocumentationCommand(LspTextCommand):
     Can be invoked to search the Julia documentation about the word at the current cursor position
     or from the right-click context menu.
     """
-
-    session_name = SESSION_NAME
 
     def is_enabled(self, event: dict | None = None, point: int | None = None) -> bool:
         # Language server must be ready
