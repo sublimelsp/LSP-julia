@@ -337,12 +337,10 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
     in order to provide autocomplete suggestions and diagnostics. The active environment will be shown in the status
     bar, unless the "show_environment_status" setting is disabled. """
 
-    def run(self, **kwargs) -> None:
-        files = kwargs.get('files')
+    def run(self, *, files: list[str] | None = None, env_path: str | None = None) -> None:
         if files:
             self.activate_environment(os.path.dirname(files[0]))
             return
-        env_path = kwargs.get('env_path')
         if env_path == SELECT_FOLDER_DIALOG_FLAG:
             curr_file = self.window.active_view().file_name()  # pyright: ignore[reportOptionalMemberAccess]
             starting_dir = os.path.dirname(curr_file) if curr_file else None
@@ -351,10 +349,9 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
         elif env_path:
             self.activate_environment(env_path)
 
-    def is_visible(self, **kwargs) -> bool:
+    def is_visible(self, *, files: list[str] | None = None) -> bool:
         if not super().is_enabled():
             return False
-        files = kwargs.get('files')
         if files is not None:  # command was invoked from the side bar context menu
             return len(files) == 1 and os.path.basename(files[0]) in ('Project.toml', 'JuliaProject.toml')
         return True
@@ -643,6 +640,10 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             self._sheet_id = sheet.id()
             if active_view and active_view.is_valid():
                 self.window.focus_view(active_view)
+
+        # This is guaranteed but it's not obvious to type-checker.
+        if not isinstance(sheet, sublime.HtmlSheet):
+            return
 
         frontmatter = mdpopups.format_frontmatter({
             "allow_code_wrap": True,
