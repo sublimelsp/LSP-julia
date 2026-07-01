@@ -337,12 +337,10 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
     in order to provide autocomplete suggestions and diagnostics. The active environment will be shown in the status
     bar, unless the "show_environment_status" setting is disabled. """
 
-    def run(self, **kwargs) -> None:
-        files = kwargs.get('files')
+    def run(self, *, files: list[str] | None = None, env_path: str | None = None) -> None:
         if files:
             self.activate_environment(os.path.dirname(files[0]))
             return
-        env_path = kwargs.get('env_path')
         if env_path == SELECT_FOLDER_DIALOG_FLAG:
             curr_file = self.window.active_view().file_name()  # pyright: ignore[reportOptionalMemberAccess]
             starting_dir = os.path.dirname(curr_file) if curr_file else None
@@ -351,10 +349,9 @@ class JuliaActivateEnvironmentCommand(LspWindowCommand):
         elif env_path:
             self.activate_environment(env_path)
 
-    def is_visible(self, **kwargs) -> bool:
+    def is_visible(self, *, files: list[str] | None = None) -> bool:
         if not super().is_enabled():
             return False
-        files = kwargs.get('files')
         if files is not None:  # command was invoked from the side bar context menu
             return len(files) == 1 and os.path.basename(files[0]) in ('Project.toml', 'JuliaProject.toml')
         return True
@@ -702,7 +699,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
         content = frontmatter + toolbar + markdown_content
 
-        mdpopups.update_html_sheet(sheet, content, css=css().sheets, wrapper_class="lsp_sheet")
+        mdpopups.update_html_sheet(sheet, content, css=css().sheets, wrapper_class="lsp_sheet")  # pyright: ignore[reportArgumentType]
 
     def input(self, args: dict) -> sublime_plugin.TextInputHandler | None:
         if "word" not in args:
