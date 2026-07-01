@@ -641,10 +641,6 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
             if active_view and active_view.is_valid():
                 self.window.focus_view(active_view)
 
-        # This is guaranteed but it's not obvious to type-checker.
-        if not isinstance(sheet, sublime.HtmlSheet):
-            return
-
         frontmatter = mdpopups.format_frontmatter({
             "allow_code_wrap": True,
             "language_map": {
@@ -703,7 +699,7 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
         content = frontmatter + toolbar + markdown_content
 
-        mdpopups.update_html_sheet(sheet, content, css=css().sheets, wrapper_class="lsp_sheet")
+        mdpopups.update_html_sheet(sheet, content, css=css().sheets, wrapper_class="lsp_sheet")  # pyright: ignore[reportArgumentType]
 
     def input(self, args: dict) -> sublime_plugin.TextInputHandler | None:
         if "word" not in args:
