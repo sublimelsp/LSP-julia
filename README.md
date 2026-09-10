@@ -9,7 +9,7 @@ A plugin for the LSP client in Sublime Text with support for the [Julia language
 
 The following should be installed:
 
-* [Julia](https://julialang.org/) 1.10, 1.11, or 1.12
+* [Julia](https://julialang.org/) 1.11, 1.12, or 1.13
 * The [Julia package](https://packages.sublimetext.io/packages/Julia/) from Package Control
 * The [LSP](https://packages.sublimetext.io/packages/LSP/) and [LSP-julia](https://packages.sublimetext.io/packages/LSP-julia/) packages from Package Control
 * Optionally the [Terminus](https://packages.sublimetext.io/packages/Terminus/) package from Package Control for a basic Julia REPL integration and the ability to run code blocks with a key binding
