@@ -85,7 +85,7 @@ CLASS_INSIDE_WORD = 512
 # CLASS_BRACKET_OPEN = 4096
 # CLASS_BRACKET_CLOSE = 8192
 
-SERVER_VERSION = "7f6092e"  # LanguageServer v5.0.0
+SERVER_VERSION = "48362e8"  # LanguageServer v5.2.0
 ST_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
 INSTALLED_PACKAGES_PATH = sublime.installed_packages_path()
 PACKAGES_PATH = sublime.packages_path()
@@ -274,7 +274,7 @@ class LspJuliaPlugin(LspPlugin):
             shutil.rmtree(server_path, ignore_errors=True)
             try:
                 os.makedirs(server_path, exist_ok=True)
-                for file in ('Project.toml', 'Manifest.toml', 'Manifest-v1.11.toml', 'Manifest-v1.12.toml'):
+                for file in ('Project.toml', 'Manifest-v1.11.toml', 'Manifest-v1.12.toml', 'Manifest-v1.13.toml'):
                     ResourcePath('Packages', 'LSP-julia', 'server', file).copy(str(cls.plugin_storage_path / file))
                 # TODO: Use cls.plugin_storage_path as DEPOT_PATH for language server
                 returncode = subprocess.call([

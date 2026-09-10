@@ -12,16 +12,16 @@
     "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer; runserver()"],
     "selector": "source.julia",
     "initialization_options": {
-        // If set to true, parent directories and the home directory are also searched
-        // for a `.JuliaFormatter.toml` file.
-        "useFormatterConfigDefaults": false,
+        // Options: "on", "off", "auto"
+        "julialangDirectoryWatching": "auto",
     },
 
-    // Formatting options must be configured through a .JuliaFormatter.toml file,
-    // see https://domluna.github.io/JuliaFormatter.jl/stable/config/
+    // Formatting and linting options can be configured through `JuliaFormat.toml` and
+    // `JuliaLint.toml` configuration files in your project directory.
+    // For details see https://www.julia-vscode.org/docs/stable/userguide/configuration/
     "settings": {
         // Sets the mode for completions.
-        // Valid values:
+        // Options:
         // - "exportedonly": Show completions for the current namespace.
         // - "import": Show completions for the current namespace and unexported
         //       variables of `using`ed modules. Selection of an unexported
@@ -31,52 +31,29 @@
         //       variables of `using`ed modules. Selection of an unexported
         //       variable will complete to a qualified variable name.
         "julia.completionmode": "qualify",
-        // Run the linter on active files.
-        "julia.lint.run": true,
-        // This compares call signatures against all known methods for the called
-        // function. Calls with too many or too few arguments, or unknown keyword
-        // parameters are highlighted.
-        "julia.lint.call": true,
-        // Check for constant conditionals in if statements that result in
-        // branches never being reached.
-        "julia.lint.constif": true,
-        // Check variables used in type declarations are datatypes.
-        "julia.lint.datadecl": true,
-        // Specifies sub-directories in a package directory where only basic
-        // linting is. This drastically lowers the chance for false positives.
-        "julia.lint.disabledDirs": [
-            "docs",
-            "test"
-        ],
-        // Check iterator syntax of loops. Will identify, for example, attempts
-        // to iterate over single values.
-        "julia.lint.iter": true,
-        // Check for deterministic lazy boolean operators.
-        "julia.lint.lazy": true,
-        // Highlight unknown symbols. The `symbols` option will not mark unknown
-        // fields.
-        // Valid values: "none", "symbols", "all"
-        "julia.lint.missingrefs": "none",
-        // Check submodule names do not shadow their parent's name.
-        "julia.lint.modname": true,
-        // Check for use of `==` rather than `===` when comparing against `nothing`.
-        "julia.lint.nothingcomp": true,
-        // Check for type piracy - the overloading of external functions with
-        // methods specified for external datatypes. 'External' here refers to
-        // imported code.
-        "julia.lint.pirates": true,
-        // Check parameters declared in `where` statements or datatype declarations
-        // are used.
-        "julia.lint.typeparam": true,
-        // Check that all declared arguments are used within the function body.
-        "julia.lint.useoffuncargs": true,
         // Enable display of static inlay hints. Please note that inlay hints also
         // need to be enabled in the LSP package settings ("show_inlay_hints": true).
         "julia.inlayHints.static.enabled": true,
         // Enable type hints for variable definitions.
         "julia.inlayHints.static.variableTypes.enabled": true,
         // Enable name hints for function parameters.
-        // Valid values: "none", "literals", "all"
+        // Options: "none", "literals", "all"
         "julia.inlayHints.static.parameterNames.enabled": "literals",
+        // Download symbol server cache files from `julia.symbolserverUpstream`.
+        "julia.symbolCacheDownload": false,
+        // Symbol server cache download URL.
+        "julia.symbolserverUpstream": "https://symbolcache.julialang.net",
+        // Whether to use local package indexing.
+        // Disable for potentially reduced functionality with lower resource usage.
+        "julia.enableDynamicIndexing": true,
+        // Maximum number of concurrently running environment-indexing child processes.
+        // Set to 0 for no limit.
+        "julia.maxConcurrentIndexingProcesses": 4,
+        // Whether to auto-resolve environments in the workspace,
+        // for example a `docs/Project.toml` that has no Manifest.toml.
+        // Resolution runs Pkg in a background child process and may access the network.
+        // If false, only environments with a Manifest.toml are considered.
+        // Changing this requires a restart of the language server.
+        "julia.enableWorkspaceEnvironmentResolution": true,
     }
 }

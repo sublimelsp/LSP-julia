@@ -1,7 +1,23 @@
 LSP-julia version 1.8.0
 -----------------------
 
+  * Udated language server to the latest version.
+
+  * Added support for Julia 1.13.
+
+
 # BREAKING CHANGES
+
+  * Julia 1.10 (LTS) is no longer supported by the language server!
+    If you need to use Julia 1.10 and cannot install a newer Julia version, you can still
+    manually install the previous LSP-julia release by downloading the source code from GitHub:
+    https://github.com/sublimelsp/LSP-julia/releases/tag/v1.7.2
+    extract it into your `Packages` directory (*Preferences: Browse Packages* from the command palette),
+    and rename the folder to `LSP-julia`.
+
+  * Some language server settings were removed or newly added.
+    Linting options now require a `JuliaLint.toml` configuration file inside the project directory.
+    For details check *Preferences: LSP-julia Settings* from the command palette.
 
   * To follow standard naming conventions, all internal command names provided by
     this package now have an `lsp_` prefix. In case you defined a custom key binding
