@@ -1,6 +1,6 @@
 [
     {
         "caption": "Show Documentation",
-        "command": "julia_show_documentation"
+        "command": "lsp_julia_show_documentation"
     }
 ]

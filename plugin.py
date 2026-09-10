@@ -231,7 +231,10 @@ def prepare_markdown(content: str) -> str:
     content = re.sub("\n- ", "\n\n- ", content)
     # Replace [`title`](@ref) links with the corresponding command to navigate the documentation with a new search query
     content = re.sub(
-        r"\[`(.+?)`\]\(@ref.*?\)", r"""<a href='subl:julia_search_documentation {"word": "\1"}'>`\1`</a>""", content)
+        r"\[`(.+?)`\]\(@ref.*?\)",
+        r"""<a href='subl:lsp_julia_search_documentation {"word": "\1"}'>`\1`</a>""",
+        content
+    )
     # Remove parameters after fenced code block language identifier
     content = re.sub("```julia;.*?\n", "```julia\n", content)
     content = re.sub("```jldoctest;.*?\n", "```jldoctest\n", content)
@@ -332,7 +335,7 @@ class LspJuliaOpenFileCommand(sublime_plugin.WindowCommand):
 SELECT_FOLDER_DIALOG_FLAG = 1
 
 
-class JuliaActivateEnvironmentCommand(LspWindowCommand):
+class LspJuliaActivateEnvironmentCommand(LspWindowCommand):
     """ Selects the active Julia environment, which is used by the language server to resolve the package dependencies
     in order to provide autocomplete suggestions and diagnostics. The active environment will be shown in the status
     bar, unless the "show_environment_status" setting is disabled. """
@@ -427,7 +430,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
         return text is not None
 
 
-class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
+class LspJuliaOpenReplCommand(sublime_plugin.WindowCommand):
     """
     Start a Julia REPL via the Terminus package, or focus panel if already started.
     """
@@ -445,7 +448,7 @@ class JuliaOpenReplCommand(sublime_plugin.WindowCommand):
             start_julia_repl(self.window, True, panel)
 
 
-class JuliaSelectCodeBlockCommand(LspTextCommand):
+class LspJuliaSelectCodeBlockCommand(LspTextCommand):
     """
     Can be invoked to select the code block containing the current cursor position.
     Maybe not very useful on its own, but rather when combined with running the code in the Julia REPL.
@@ -463,7 +466,7 @@ class JuliaSelectCodeBlockCommand(LspTextCommand):
         self.view.run_command("lsp_selection_set", {"regions": [(a, b)]})
 
 
-class JuliaRunCodeBlockCommand(LspTextCommand):
+class LspJuliaRunCodeBlockCommand(LspTextCommand):
     """
     Can be invoked to execute the current selection in the Julia REPL. If no text is selected, get the code block
     containing the current cursor position from the language server and execute it in the Julia REPL.
@@ -514,7 +517,7 @@ class JuliaRunCodeBlockCommand(LspTextCommand):
         send_julia_repl(window, code_block)
 
 
-class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
+class LspJuliaRunCodeCellCommand(sublime_plugin.TextCommand):
     """
     Can be invoked to execute the current selection, or if no text is selected, the code cell containing the current
     cursor position in the Julia REPL. Code cells are delimited by specially formatted comments.
@@ -578,7 +581,7 @@ class JuliaRunCodeCellCommand(sublime_plugin.TextCommand):
             sublime.set_timeout(lambda: send_julia_repl(window, code_block), 5)
 
 
-class JuliaSearchDocumentationCommand(LspWindowCommand):
+class LspJuliaSearchDocumentationCommand(LspWindowCommand):
     """
     Can be invoked to search the Julia documentation.
     """
@@ -670,13 +673,13 @@ class JuliaSearchDocumentationCommand(LspWindowCommand):
 
         toolbar_links.append(
             "<a title='Go back one page' href='{}'>Back</a>".format(
-                sublime.command_url('julia_search_documentation', {'word': '__back'})
+                sublime.command_url('lsp_julia_search_documentation', {'word': '__back'})
             ) if self._last_words else "Back")
         toolbar_links.append(
             "<a title='Go forward one page' href='{}'>Forward</a>".format(
-                sublime.command_url('julia_search_documentation', {'word': '__forward'})
+                sublime.command_url('lsp_julia_search_documentation', {'word': '__forward'})
             ) if self._next_words else "Forward")
-        toolbar_links.append("<a href='subl:julia_search_documentation'>Search</a>")
+        toolbar_links.append("<a href='subl:lsp_julia_search_documentation'>Search</a>")
         toolbar = "<div class='toolbar'>" + " | ".join(toolbar_links) + "</div><hr>\n"
 
         markdown_content = prepare_markdown(response)
@@ -724,7 +727,7 @@ class WordInputHandler(sublime_plugin.TextInputHandler):
         return text != ""
 
 
-class JuliaShowDocumentationCommand(LspTextCommand):
+class LspJuliaShowDocumentationCommand(LspTextCommand):
     """
     Can be invoked to search the Julia documentation about the word at the current cursor position
     or from the right-click context menu.
@@ -757,4 +760,4 @@ class JuliaShowDocumentationCommand(LspTextCommand):
         word = self.view.substr(self.view.word(pt))
         window = self.view.window()
         if window:
-            window.run_command("julia_search_documentation", {"word": word})
+            window.run_command("lsp_julia_search_documentation", {"word": word})

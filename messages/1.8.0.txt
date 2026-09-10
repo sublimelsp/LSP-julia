@@ -1,0 +1,14 @@
+LSP-julia version 1.8.0
+-----------------------
+
+# BREAKING CHANGES
+
+  * To follow standard naming conventions, all internal command names provided by
+    this package now have an `lsp_` prefix. In case you defined a custom key binding
+    for a command from this package, please update its command name:
+      `julia_run_code_block`       -> `lsp_julia_run_code_block`
+      `julia_run_code_cell`        -> `lsp_julia_run_code_cell`
+      `julia_select_code_block`    -> `lsp_julia_select_code_block`
+      `julia_open_repl`            -> `lsp_julia_open_repl`
+      `julia_show_documentation`   -> `lsp_julia_show_documentation`
+      `julia_activate_environment` -> `lsp_julia_activate_environment`
