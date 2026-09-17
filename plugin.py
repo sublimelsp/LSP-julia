@@ -25,6 +25,7 @@ from LSP.protocol import Range
 from LSP.protocol import TextDocumentIdentifier
 from sublime_lib import ResourcePath
 from typing import Any
+from typing import TYPE_CHECKING
 from typing import TypedDict
 from typing_extensions import NotRequired
 import mdpopups
@@ -34,7 +35,10 @@ import shutil
 import sublime
 import sublime_plugin
 import subprocess
-import toml
+import toml  # TODO: maybe replace with tomllib standard library on 3.14 plugin host
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
@@ -85,14 +89,8 @@ CLASS_INSIDE_WORD = 512
 # CLASS_BRACKET_OPEN = 4096
 # CLASS_BRACKET_CLOSE = 8192
 
-SERVER_VERSION = "48362e8"  # LanguageServer v5.2.0
-ST_VERSION = int(sublime.version())  # This API function is allowed to be invoked at importing time
-INSTALLED_PACKAGES_PATH = sublime.installed_packages_path()
-PACKAGES_PATH = sublime.packages_path()
-PACKAGE_NAME = "LSP-julia"
+ST_VERSION = int(sublime.version())
 SETTINGS_FILE = "LSP-julia.sublime-settings"
-SESSION_NAME = "julia"
-STATUS_BAR_KEY = "lsp_julia_environment"
 JULIA_REPL_NAME = "Julia REPL"
 JULIA_REPL_TAG = "julia_repl"
 CELL_DELIMITERS = ("##", r"#%%", r"# %%")
@@ -241,13 +239,13 @@ def prepare_markdown(content: str) -> str:
     return content
 
 
-# def startupinfo():
-#     if sublime.platform() == "windows":
-#         si = subprocess.STARTUPINFO()
-#         si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-#         si.wShowWindow = 11
-#         return si
-#     return None
+def read_server_version(path: Path) -> str | None:
+    try:
+        return toml.load(str(path))['sources']['LanguageServer']['rev']
+    except toml.TomlDecodeError:
+        return None
+    except KeyError:
+        return None
 
 
 class LspJuliaPlugin(LspPlugin):
@@ -260,17 +258,11 @@ class LspJuliaPlugin(LspPlugin):
         context.variables['julia_exe'] = julia_exe
         server_path = str(cls.plugin_storage_path)
         context.variables['server_path'] = server_path
-        # Set working directory, which is used by the language server to determine the Julia project environment
-        view_uri = uri_from_view(context.view)
-        for workspace_folder in context.workspace_folders:
-            if workspace_folder.includes_uri(view_uri):
-                context.working_directory = workspace_folder.path
-                break
-        else:
-            if (fpath := context.view.file_name()) and (env_path := find_julia_environment(os.path.dirname(fpath))):
-                context.working_directory = env_path
-        version_file = cls.plugin_storage_path / 'VERSION'
-        if not version_file.is_file() or version_file.read_text().strip() != SERVER_VERSION:
+        # Install/update check
+        server_project_toml = sublime.load_resource('Packages/LSP-julia/server/Project.toml')
+        server_version = toml.loads(server_project_toml)['sources']['LanguageServer']['rev']
+        stored_project_file = cls.plugin_storage_path / 'Project.toml'
+        if not stored_project_file.is_file() or read_server_version(stored_project_file) != server_version:
             shutil.rmtree(server_path, ignore_errors=True)
             try:
                 os.makedirs(server_path, exist_ok=True)
@@ -285,13 +277,20 @@ class LspJuliaPlugin(LspPlugin):
                     '--eval',
                     'ENV["JULIA_SSL_CA_ROOTS_PATH"] = ""; import Pkg; Pkg.instantiate()'
                 ])
-                if returncode == 0:
-                    version_file.write_text(SERVER_VERSION)
-                else:
+                if returncode != 0:
                     raise PluginStartError('Language server installation failed.')
             except Exception:
                 shutil.rmtree(server_path, ignore_errors=True)
                 raise PluginStartError('Language server installation failed.')
+        # Set working directory, which is used by the language server to determine the Julia project environment
+        view_uri = uri_from_view(context.view)
+        for workspace_folder in context.workspace_folders:
+            if workspace_folder.includes_uri(view_uri):
+                context.working_directory = workspace_folder.path
+                break
+        else:
+            if (fpath := context.view.file_name()) and (env_path := find_julia_environment(os.path.dirname(fpath))):
+                context.working_directory = env_path
 
     def on_initialized_async(self) -> None:
         if (session := self.weaksession()) and session.working_directory:
@@ -426,7 +425,7 @@ class EnvPathInputHandler(sublime_plugin.ListInputHandler):
             return sublime.Html(f"<i>{text}</i>")
         return ""
 
-    def validate(self, text: str | int | None) -> bool:
+    def validate(self, text: str | int | None) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
         return text is not None
 
 
@@ -723,7 +722,7 @@ class WordInputHandler(sublime_plugin.TextInputHandler):
     def placeholder(self) -> str:
         return "Search Julia docs"
 
-    def validate(self, text: str) -> bool:
+    def validate(self, text: str) -> bool:  # pyright: ignore[reportIncompatibleMethodOverride]
         return text != ""
 
 
