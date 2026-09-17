@@ -23,6 +23,7 @@ jobs:
           version: ${{ matrix.julia_version }}
       - uses: julia-actions/cache@v3
       - run: |
+          rm -f ./server/Manifest-v*
           julia --project=./server -e 'using Pkg; Pkg.resolve()'
           mv -f ./server/Manifest.toml ./server/Manifest-v${{ matrix.julia_version }}.toml
       - uses: actions/upload-artifact@v7
