@@ -2,4 +2,4 @@
 LanguageServer = "2b0e0bc5-e4fd-59b4-8912-456d1b03d8d7"
 
 [sources]
-LanguageServer = {rev = "224f31d347224dd54b0958f42f77928ea9faa84b", url = "https://github.com/julia-vscode/LanguageServer.jl.git"}
+LanguageServer = {rev = "e2032a58c51d4745768d3f5dd21594e4441e7876", url = "https://github.com/julia-vscode/LanguageServer.jl.git"}
