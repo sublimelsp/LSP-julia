@@ -1,0 +1,52 @@
+name: Resolve Server Dependencies
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/Project.toml'
+
+jobs:
+  resolve_dependencies:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        julia_version:
+          - '1.11'
+          - '1.12'
+          - '1.13'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.julia_version }}
+      - run: |
+          julia --project=./server -e 'using Pkg; Pkg.resolve()'
+          mv -f ./server/Manifest.toml ./server/Manifest-v${{ matrix.julia_version }}.toml
+      - uses: actions/upload-artifact@v7
+        with:
+          path: server/Manifest-v${{ matrix.julia_version }}.toml
+          archive: false
+
+  create_pr:
+    needs: resolve_dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          rm -f ./server/Manifest-v*
+      - uses: actions/download-artifact@v8
+        with:
+          path: server
+          merge-multiple: true
+      - uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: Resolve server dependencies
+          title: Resolve dependencies after server update
+          branch: resolve-dependencies
+          body: |
+            Resolve dependencies after server update ${{ github.sha }}
