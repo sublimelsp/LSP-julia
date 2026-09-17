@@ -21,6 +21,7 @@ jobs:
       - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.julia_version }}
+      - uses: julia-actions/cache@v3
       - run: |
           julia --project=./server -e 'using Pkg; Pkg.resolve()'
           mv -f ./server/Manifest.toml ./server/Manifest-v${{ matrix.julia_version }}.toml
