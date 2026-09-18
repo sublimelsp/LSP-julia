@@ -22,9 +22,10 @@ jobs:
         with:
           version: ${{ matrix.julia_version }}
       # - uses: julia-actions/cache@v3
-      - run: |
+      - name: Generate Manifest-v${{ matrix.julia_version }}.toml
+        run: |
           rm -f ./server/Manifest-v*
-          julia --project=./server -e 'using Pkg; Pkg.resolve()'
+          julia --project=./server -e 'using Pkg; Pkg.Registry.add("General"); Pkg.resolve()'
           mv -f ./server/Manifest.toml ./server/Manifest-v${{ matrix.julia_version }}.toml
       - uses: actions/upload-artifact@v7
         with:
