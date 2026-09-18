@@ -12,8 +12,9 @@
     "command": ["$julia_exe", "--startup-file=no", "--history-file=no", "--project=$server_path", "--eval", "using LanguageServer; runserver()"],
     "selector": "source.julia",
     "initialization_options": {
-        // Options: "on", "off", "auto"
-        "julialangDirectoryWatching": "auto",
+        "julialangDirectoryWatching": "auto",  // Options: "on", "off", "auto"
+        "julialangServerStatus": false,
+        "julialangTestItemIdentification": false,
     },
 
     // Formatting and linting options can be configured through `JuliaFormat.toml` and

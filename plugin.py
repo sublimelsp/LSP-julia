@@ -42,11 +42,29 @@ if TYPE_CHECKING:
 
 
 # https://github.com/julia-vscode/julia-vscode/blob/main/src/interactive/misc.ts
-# https://github.com/julia-vscode/LanguageServer.jl/blob/master/src/extensions/extensions.jl
+# https://github.com/julia-vscode/LanguageServer.jl/blob/main/src/extensions/extensions.jl
 class VersionedTextDocumentPositionParams(TypedDict):
     textDocument: TextDocumentIdentifier
     version: int
     position: Position
+
+
+class ServerStatusDJPDetail(TypedDict):
+    kind: str
+    path: str
+    package: NotRequired[str]
+    status: str
+    progress: NotRequired[int]
+    failureMessage: NotRequired[str]
+    alive: bool
+
+
+class PublishServerStatusParams(TypedDict):
+    indexingDone: bool
+    pendingCount: int
+    maxConcurrentDjps: int
+    djps: list[ServerStatusDJPDetail]
+
 
 class TestItemDetail(TypedDict):
     id: str
@@ -57,6 +75,8 @@ class TestItemDetail(TypedDict):
     optionDefaultImports: bool
     optionTags: list[str]
     optionSetup: list[str]
+    optionSkip: bool | str
+
 
 class TestSetupDetail(TypedDict):
     name: str
@@ -64,6 +84,7 @@ class TestSetupDetail(TypedDict):
     range: Range
     code: str
     codeRange: Range
+
 
 class TestErrorDetail(TypedDict):
     id: str
@@ -305,6 +326,10 @@ class LspJuliaPlugin(LspPlugin):
 
     @notification_handler('julia/publishTests')
     def on_publish_tests(self, params: PublishTestsParams) -> None:
+        pass
+
+    @notification_handler('julia/publishServerStatus')
+    def on_publish_server_status(self, params: PublishServerStatusParams) -> None:
         pass
 
 
