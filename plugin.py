@@ -394,7 +394,7 @@ class LspJuliaActivateEnvironmentCommand(LspWindowCommand):
         session = self.session()
         if not session:
             return
-        session.send_notification(Notification('julia/activateenvironment', {'envPath': env_path}))
+        session.send_notification(Notification('julia/setEnvironmentPath', {'envPath': env_path}))
         set_environment_status(session, env_path)
 
     def input(self, args: dict) -> sublime_plugin.ListInputHandler | None:
