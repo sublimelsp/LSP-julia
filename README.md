@@ -38,40 +38,12 @@ LSP-julia provides additional commands which are available from the command pale
 | LSP-julia: Select Code Block | none | Select the function or code block at the current cursor position. For multiple active cursors, only the topmost cursor position is taken into account. |
 | LSP-julia: Run Code Block[^2] | <kbd>Alt</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code block containing the current cursor position and move curser to the next block. |
 | LSP-julia: Run Code Cell[^2] | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> | If text is selected, run it in a Julia REPL. Otherwise, run the code cell containing the current cursor position and move curser to the next cell. Code cells are signalized with a specially formatted comment at the start of a line: `##`, `#%%` or `# %%`. |
-<!-- | LSP-julia: Run Testitem | none | Show a quick panel with all available `@testitem`s in Julia files (see description below). | -->
 
 [^1]: The documentation pages are dynamically generated from docstrings in Julia base, the standard library and in Julia packages, not from the official documentation on the Julia website.
 [^2]: Only available if you have the Terminus package installed.
 
 To add or adjust key bindings for the commands, run *Preferences: Key Bindings* from the command palette and modify the user file on the righthand side.
 For an example refer to the [Default.sublime-keymap](Default.sublime-keymap) file in this repository, and for the command names from this package see [LSP-julia.sublime-commands](LSP-julia.sublime-commands).
-
-<!-- ### Run individual test items
-
-LSP-julia has a special feature which allows to run individual testsets from a Julia package directly from the editor UI.
-
-For this to work, the tests must be contained within a `@testitem` block, which is basically a replacement for `@testset`.
-For an example see the screenshot below or read the detailed description at https://github.com/julia-vscode/TestItemRunner.jl#writing-tests.
-
-A `@testitem` can be executed via the "Run Test" link shown in an annotation on the righthand side of the editor, or with the "LSP-julia: Run Testitem" command from the command palette.
-Test failures and errors will be shown as annotations at the position in the code where they occured.
-Currently there is no cancelling for the running `@testitem`s implemented, so make sure that the tests finish in a finite amount of time or manually close potential Julia processes from the task manager if you accidentally added an infinite loop.
-
-> [!NOTE]
-> The `@testitem` feature only works in [project environments](https://docs.julialang.org/en/v1/manual/code-loading/#Project-environments), i.e. you must have opened a folder in the sidebar which contains a *Project.toml* (or *JuliaProject.toml*) file with a `name` and `uuid` field.
->
-> `@testitem`s have an isolated scope. The package to be tested is loaded implicitly through `using`. To access unexported symbols, either export them or call them by prepending the module name (for example `MyPackage.foo()`).
-
-If you want to disable this feature completely, you can toggle off the following entry in the LSP-julia settings (*Preferences: LSP-julia Settings* from the command palette):
-```json
-{
-  "initializationOptions": {
-    "julialangTestItemIdentification": false
-  }
-}
-```
-
-![Testitem preview](img/testitem.png) -->
 
 
 ## Troubleshooting
@@ -84,3 +56,9 @@ Delete the `LSP-julia` folder at the following location:
 * on macOS: `~/Library/Application Support/Sublime Text/Package Storage/LSP-julia`
 
 Then restart Sublime Text and open a Julia file to re-install the language server.
+
+
+## Instructions for Maintainers
+
+To update the language server, just modify the `ref` value in [server/Project.toml](https://github.com/sublimelsp/LSP-julia/blob/main/server/Project.toml) with a new commit SHA from [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl/commits/main/) and push the changes to the `main` branch.
+This will trigger a GitHub workflow that resolves the server dependencies for all supported Julia versions, and automatically creates a pull request with the changes to the corresponding `Manifest.toml` files.
