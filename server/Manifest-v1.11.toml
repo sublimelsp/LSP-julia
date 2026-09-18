@@ -23,9 +23,9 @@ version = "1.11.0"
 
 [[deps.CSTParser]]
 deps = ["Tokenize"]
-git-tree-sha1 = "fff070691d78b302dc7174a1d8eb1a94cc514987"
+git-tree-sha1 = "7623f5d7b94a69f0c23dba83014c15bb372c4023"
 uuid = "00ebfdb7-1f24-5e51-bd34-a7502290713f"
-version = "3.5.0"
+version = "3.5.1"
 
 [[deps.CancellationTokens]]
 deps = ["Sockets"]
@@ -59,9 +59,9 @@ version = "1.6.0"
 
 [[deps.ExceptionUnwrapping]]
 deps = ["Test"]
-git-tree-sha1 = "d36f682e590a83d63d1c7dbd287573764682d12a"
+git-tree-sha1 = "4e468f521e1f9f86891cb07186de5df90360a666"
 uuid = "460bff9d-24e4-43bc-9d9f-a8973cb893f4"
-version = "0.1.11"
+version = "0.1.12"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -79,9 +79,9 @@ version = "1.11.0"
 
 [[deps.JSON]]
 deps = ["Dates", "Logging", "Parsers", "PrecompileTools", "StructUtils", "UUIDs", "Unicode"]
-git-tree-sha1 = "88352712893ec50bee3680605891eaf0e9ed6368"
+git-tree-sha1 = "cb5b63c11dd08229716a8b41a2325ab941a7b797"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "1.8.0"
+version = "1.8.1"
 
     [deps.JSON.extensions]
     JSONArrowExt = ["ArrowTypes"]
@@ -108,17 +108,17 @@ version = "1.0.2"
 
 [[deps.JuliaWorkspaces]]
 deps = ["AutoHashEquals", "CSTParser", "CancellationTokens", "FileWatching", "InteractiveUtils", "JSONRPC", "JuliaFormatter", "JuliaSyntax", "LibGit2", "Logging", "Pkg", "PrecompileTools", "REPL", "Runic", "SHA", "Salsa", "Scratch", "Sockets", "TestItemDetection", "UUIDs"]
-git-tree-sha1 = "6821e65385c82d32c67fd8f744195019f658ec28"
+git-tree-sha1 = "3f040c57f45feb7ed31612795c008a64ad4ba218"
 uuid = "e554591c-7f10-434f-9f27-2097f62a04fd"
-version = "13.2.0"
+version = "13.4.3"
 
 [[deps.LanguageServer]]
 deps = ["Dates", "JSON", "JSONRPC", "JuliaWorkspaces", "Logging", "LoggingExtras", "Markdown", "PrecompileTools", "Salsa", "URIs", "UUIDs"]
-git-tree-sha1 = "c28bae89eb7a46c04cbe39cd23544164cd690fb2"
-repo-rev = "48362e8d68a9210d300f80cba2e2e20a16d7a2f4"
+git-tree-sha1 = "1207bc8a65dcc613019d5dacf484707a71f26bb0"
+repo-rev = "66732ddb4c0fe85d2c5b30771e8c73a4dbdfd7c0"
 repo-url = "https://github.com/julia-vscode/LanguageServer.jl.git"
 uuid = "2b0e0bc5-e4fd-59b4-8912-456d1b03d8d7"
-version = "5.2.0"
+version = "6.0.2-DEV"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -205,9 +205,9 @@ version = "1.2.1"
 
 [[deps.Preferences]]
 deps = ["TOML"]
-git-tree-sha1 = "8b770b60760d4451834fe79dd483e318eee709c4"
+git-tree-sha1 = "5005266de4bfe50e53ff44a5cb5c540b6e47a254"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.5.2"
+version = "1.6.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -236,9 +236,9 @@ version = "0.7.0"
 
 [[deps.Salsa]]
 deps = ["ExceptionUnwrapping", "Logging", "MacroTools"]
-git-tree-sha1 = "bdc9249832c0ab0b42ef529d702dee5fbcc57ace"
+git-tree-sha1 = "f610060cf19ae80fceb30872eb208bee102ea277"
 uuid = "1fbf2c77-44e2-4d5d-8131-0fa618a5c278"
-version = "2.5.2"
+version = "2.5.3"
 
 [[deps.Scratch]]
 deps = ["Dates"]
@@ -256,16 +256,18 @@ version = "1.11.0"
 
 [[deps.StructUtils]]
 deps = ["Dates", "UUIDs"]
-git-tree-sha1 = "2d0fc55c61321ba245c47be599570d11bac50303"
+git-tree-sha1 = "3bf3b18614b45effa8f8cc6e8f919d4efc1de7f1"
 uuid = "ec057cc2-7a8d-4b58-b3b3-92acb9f63b42"
-version = "2.8.5"
+version = "2.9.1"
 
     [deps.StructUtils.extensions]
+    StructUtilsLazilyInitializedFieldsExt = ["LazilyInitializedFields"]
     StructUtilsMeasurementsExt = ["Measurements"]
     StructUtilsStaticArraysCoreExt = ["StaticArraysCore"]
     StructUtilsTablesExt = ["Tables"]
 
     [deps.StructUtils.weakdeps]
+    LazilyInitializedFields = "0e77f7df-68c5-4e49-93ce-4cd80f5598bf"
     Measurements = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
     StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
     Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
