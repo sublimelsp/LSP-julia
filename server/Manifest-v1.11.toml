@@ -79,9 +79,9 @@ version = "1.11.0"
 
 [[deps.JSON]]
 deps = ["Dates", "Logging", "Parsers", "PrecompileTools", "StructUtils", "UUIDs", "Unicode"]
-git-tree-sha1 = "cb5b63c11dd08229716a8b41a2325ab941a7b797"
+git-tree-sha1 = "633b5a34494e711f694ccbc88a6e00102f10238c"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "1.8.1"
+version = "1.9.0"
 
     [deps.JSON.extensions]
     JSONArrowExt = ["ArrowTypes"]
@@ -114,8 +114,8 @@ version = "13.4.3"
 
 [[deps.LanguageServer]]
 deps = ["Dates", "JSON", "JSONRPC", "JuliaWorkspaces", "Logging", "LoggingExtras", "Markdown", "PrecompileTools", "Salsa", "URIs", "UUIDs"]
-git-tree-sha1 = "1207bc8a65dcc613019d5dacf484707a71f26bb0"
-repo-rev = "66732ddb4c0fe85d2c5b30771e8c73a4dbdfd7c0"
+git-tree-sha1 = "f4d0a6163e3ebff184c844dad31fe2cf8089e6d8"
+repo-rev = "8761daa148351ea2b1e968859cd12149c34b280f"
 repo-url = "https://github.com/julia-vscode/LanguageServer.jl.git"
 uuid = "2b0e0bc5-e4fd-59b4-8912-456d1b03d8d7"
 version = "6.0.2-DEV"
@@ -226,9 +226,9 @@ version = "1.11.0"
 
 [[deps.Runic]]
 deps = ["JuliaSyntax", "Preferences"]
-git-tree-sha1 = "4bb4f4bbff3fe1c1f9b55ed2c1d08082a63a2d6b"
+git-tree-sha1 = "22a9737588a1dfdf029923247934ecb2da58f627"
 uuid = "62bfec6d-59d7-401d-8490-b29ee721c001"
-version = "1.10.0"
+version = "1.11.0"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -256,9 +256,9 @@ version = "1.11.0"
 
 [[deps.StructUtils]]
 deps = ["Dates", "UUIDs"]
-git-tree-sha1 = "3bf3b18614b45effa8f8cc6e8f919d4efc1de7f1"
+git-tree-sha1 = "b814d5005d6a529d740ffe06f8a86396f6501138"
 uuid = "ec057cc2-7a8d-4b58-b3b3-92acb9f63b42"
-version = "2.9.1"
+version = "2.9.2"
 
     [deps.StructUtils.extensions]
     StructUtilsLazilyInitializedFieldsExt = ["LazilyInitializedFields"]
