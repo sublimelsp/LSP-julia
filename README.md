@@ -60,5 +60,5 @@ Then restart Sublime Text and open a Julia file to re-install the language serve
 
 ## Instructions for Maintainers
 
-To update the language server, just modify the `ref` value in [server/Project.toml](https://github.com/sublimelsp/LSP-julia/blob/main/server/Project.toml) with a new commit SHA from [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl/commits/main/) and push the changes to the `main` branch.
+To update the language server, just modify the `rev` value in [server/Project.toml](https://github.com/sublimelsp/LSP-julia/blob/main/server/Project.toml) with a new commit SHA from [LanguageServer.jl](https://github.com/julia-vscode/LanguageServer.jl/commits/main/) and push the changes to the `main` branch.
 This will trigger a GitHub workflow that resolves the server dependencies for all supported Julia versions, and automatically creates a pull request with the changes to the corresponding `Manifest.toml` files.
