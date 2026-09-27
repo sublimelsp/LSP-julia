@@ -11,14 +11,13 @@ from LSP.plugin import notification_handler
 from LSP.plugin import OnPreStartContext
 from LSP.plugin import parse_uri
 from LSP.plugin import PluginStartError
+from LSP.plugin import position_to_offset
 from LSP.plugin import Request
 from LSP.plugin import ServerResponse
 from LSP.plugin import Session
+from LSP.plugin import text_document_position_params
 from LSP.plugin import uri_from_view
 from LSP.plugin import WorkspaceFolder
-from LSP.plugin.core.protocol import Point
-from LSP.plugin.core.views import point_to_offset
-from LSP.plugin.core.views import text_document_position_params
 from LSP.protocol import DocumentUri
 from LSP.protocol import Position
 from LSP.protocol import Range
@@ -485,8 +484,8 @@ class LspJuliaSelectCodeBlockCommand(LspTextCommand):
             session.send_request(Request("julia/getCurrentBlockRange", params), self.on_result)
 
     def on_result(self, params: Any) -> None:
-        a = point_to_offset(Point.from_lsp(params[0]), self.view)
-        b = point_to_offset(Point.from_lsp(params[1]), self.view)
+        a = position_to_offset(self.view, params[0])
+        b = position_to_offset(self.view, params[1])
         self.view.run_command("lsp_selection_set", {"regions": [(a, b)]})
 
 
@@ -504,9 +503,7 @@ class LspJuliaRunCodeBlockCommand(LspTextCommand):
         if not find_spec("Terminus"):
             return False
         # cursor must not be at end of file
-        if self.view.sel()[0].b == self.view.size():
-            return False
-        return True
+        return self.view.sel()[0].b != self.view.size()
 
     def run(self, edit: sublime.Edit, event: dict | None = None, point: int | None = None) -> None:
         window = self.view.window()
@@ -532,9 +529,9 @@ class LspJuliaRunCodeBlockCommand(LspTextCommand):
         window = self.view.window()
         if not window:
             return
-        a = point_to_offset(Point.from_lsp(params[0]), self.view)
-        b = point_to_offset(Point.from_lsp(params[1]), self.view)
-        c = point_to_offset(Point.from_lsp(params[2]), self.view)
+        a = position_to_offset(self.view, params[0])
+        b = position_to_offset(self.view, params[1])
+        c = position_to_offset(self.view, params[2])
         code_block = self.view.substr(sublime.Region(a, b))
         self.view.run_command("lsp_selection_set", {"regions": [(c, c)]})  # move cursor to next code block
         self.view.show_at_center(c)
@@ -555,9 +552,7 @@ class LspJuliaRunCodeCellCommand(sublime_plugin.TextCommand):
         if not find_spec("Terminus"):
             return False
         # cursor must not be at end of file
-        if self.view.sel()[0].b == self.view.size():
-            return False
-        return True
+        return self.view.sel()[0].b != self.view.size()
 
     def run(self, edit: sublime.Edit) -> None:
         window = self.view.window()
