@@ -1,3 +1,3 @@
 function greet()
-    println(undefined_name)
+    println("Hello"
 end
