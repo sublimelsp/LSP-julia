@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/sublimelsp/lsp_smoke_test/v1/smoke.schema.json
+file: sample.jl
+expected_diagnostics:
+  message: undefined_name
+diagnostics_timeout: 240
