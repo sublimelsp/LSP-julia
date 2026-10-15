@@ -33,4 +33,4 @@ jobs:
       - uses: sublimelsp/lsp_smoke_test@v1
         with:
           # Provides the Julia syntax, which Sublime Text doesn't include.
-          extra-packages: JuliaEditorSupport/Julia-sublime@v1.0.11
+          extra-packages: JuliaEditorSupport/Julia-sublime@v
