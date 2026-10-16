@@ -22,13 +22,13 @@ jobs:
         with:
           version: '1'
 
-      # The package installs the language server with Pkg when it starts. Install and precompile it in the shared
-      # depot first, so that this doesn't count against the smoke test's timeout.
+      # The package installs the language server with Pkg when it starts. Install it in the shared depot first, which
+      # also precompiles it, so that this doesn't count against the smoke test's timeout.
       - name: Precompile language server
         shell: bash
         run: |
           cp -r server "$RUNNER_TEMP/julia-server"
-          julia --startup-file=no --project="$RUNNER_TEMP/julia-server" --eval 'import Pkg; Pkg.instantiate(); Pkg.precompile()'
+          julia --startup-file=no --project="$RUNNER_TEMP/julia-server" --eval 'import Pkg; Pkg.instantiate()'
 
       - uses: sublimelsp/lsp_smoke_test@v1
         with:
