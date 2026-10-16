@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/sublimelsp/lsp_smoke_test/v1/smoke.schema.json
+file: sample.jl
+# A syntax error, which is reported regardless of the lint configuration.
+expected_diagnostics:
+  severity: 1
