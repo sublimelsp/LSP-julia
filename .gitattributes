@@ -1,8 +1,4 @@
 .gitattributes export-ignore
 pyproject.toml export-ignore
-/icons/*.svg export-ignore
-/icons/convert.bat export-ignore
-/icons/convert.bat -linguist-detectable
-/img export-ignore
 renovate.json export-ignore
 sublime-package.json linguist-language=jsonc
