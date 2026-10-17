@@ -1,4 +1,6 @@
 .gitattributes export-ignore
+/.github/ export-ignore
 pyproject.toml export-ignore
 renovate.json export-ignore
 sublime-package.json linguist-language=jsonc
+/tests/ export-ignore
