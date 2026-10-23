@@ -242,11 +242,11 @@ def prepare_markdown(content: str) -> str:
     """
 
     # Workaround CommonMark deficiency: two spaces followed by a newline should result in a new paragraph
-    content = re.sub("(\\S)  \n", "\\1\n\n", content)
+    content = re.sub(r"(\\S)  \n", r"\\1\n\n", content)
     # Add another newline before horizontal rule following fenced code block
-    content = re.sub("```\n---", "```\n\n---", content)
+    content = re.sub(r"```\n---", r"```\n\n---", content)
     # Add another newline before list items
-    content = re.sub("\n- ", "\n\n- ", content)
+    content = re.sub(r"\n- ", r"\n\n- ", content)
     # Replace [`title`](@ref) links with the corresponding command to navigate the documentation with a new search query
     content = re.sub(
         r"\[`(.+?)`\]\(@ref.*?\)",
@@ -254,8 +254,8 @@ def prepare_markdown(content: str) -> str:
         content
     )
     # Remove parameters after fenced code block language identifier
-    content = re.sub("```julia;.*?\n", "```julia\n", content)
-    content = re.sub("```jldoctest;.*?\n", "```jldoctest\n", content)
+    content = re.sub(r"```julia\b.*?\n", r"```julia\n", content)
+    content = re.sub(r"```jldoctest\b.*?\n", r"```jldoctest\n", content)
     return content
 
 
